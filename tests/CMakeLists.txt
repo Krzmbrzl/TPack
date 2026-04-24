@@ -15,7 +15,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(tensor_packing_tests
 	"binomial.cpp"
 	"orbit.cpp"
-	"rank_unrank.cpp"
+	"rank.cpp"
 )
 target_link_libraries(tensor_packing_tests PRIVATE tensor_packing gtest_main)
 
