@@ -42,3 +42,6 @@
 
 # build directory
 build/
+
+# compile commands database
+compile_commands.json
