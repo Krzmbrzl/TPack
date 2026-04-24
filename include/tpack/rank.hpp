@@ -95,16 +95,19 @@ constexpr Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&part
 	std::vector< std::size_t > part_strides;
 	part_strides.reserve(size(parts));
 
+	std::vector< std::size_t > col_dims;
+	col_dims.reserve(size(parts));
+
 	part_strides.emplace_back(1);
 	for (auto &&part_levels : parts) {
 		// The dimension of all columns must be equal so we will
 		// simply determine the dimension of the first column
-		std::size_t col_dim = 1;
+		col_dims.emplace_back(1);
 		for (auto &&level : part_levels) {
-			col_dim *= dims[*begin(level)];
+			col_dims.back() *= dims[*begin(level)];
 		}
 
-		part_strides.emplace_back(part_strides.back() * col_dim);
+		part_strides.emplace_back(part_strides.back() * col_dims.back());
 	}
 	part_strides.pop_back();
 
@@ -119,21 +122,48 @@ constexpr Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&part
 
 		std::size_t num_cols = size(*begin(part_levels));
 
-		for (std::size_t i = 0; i < num_cols && current_rank > 0; ++i) {
+		for (std::size_t col = 0; col < num_cols && current_rank > 0; ++col) {
+#ifdef TPACK_UNRANK_BINARY_SEARCH
+			const std::size_t min_n = 1;
+			const std::size_t max_n = col_dims[part_idx] - 1;
+
+			auto generator = std::ranges::views::reverse(std::ranges::views::iota(min_n, max_n + 1))
+							 | std::ranges::views::transform([num_cols, col](std::size_t val) {
+								   return details::binomial(val + num_cols - col - 1, num_cols - col);
+							   });
+			std::size_t num_combinations = 0;
+			auto it = std::ranges::partition_point(generator, [&num_combinations, current_rank](std::size_t val) {
+				if (val <= current_rank) {
+					num_combinations = val;
+				}
+				return val > current_rank;
+			});
+
+			std::size_t n = 0;
+			if (it != end(generator)) {
+				n = max_n - std::ranges::distance(begin(generator), it);
+			}
+
+			assert(num_combinations <= current_rank);
+			current_rank -= num_combinations;
+			effective_idx[col] = n;
+#else
 			std::size_t n                     = 0;
 			std::size_t num_combinations      = 0;
 			std::size_t prev_num_combinations = 0;
-			// TODO: Convert into binary search for n
+
 			do {
 				prev_num_combinations = num_combinations;
-				effective_idx[i]      = n;
+				effective_idx[col]    = n;
 				++n;
-				num_combinations = details::binomial(n + num_cols - i - 1, num_cols - i);
+				num_combinations = details::binomial(n + num_cols - col - 1, num_cols - col);
 			} while (num_combinations <= current_rank);
-
 			assert(prev_num_combinations <= current_rank);
 			current_rank -= prev_num_combinations;
+#endif
 		}
+
+		assert(current_rank == 0);
 
 		// In order for a 1D indexing consisting of only a single partition to be
 		// canonical, it has to be sorted
