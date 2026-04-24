@@ -25,5 +25,9 @@ endif()
 
 target_include_directories(tensor_packing ${INCLUDE_AS_SYSTEM} INTERFACE "${PROJECT_SOURCE_DIR}/include")
 
-include(CTest)
-add_subdirectory(tests)
+option(TPACK_ENABLE_TESTING "Whether to build tests" ON)
+
+if (TPACK_ENABLE_TESTING)
+	include(CTest)
+	add_subdirectory(tests)
+endif()
