@@ -22,4 +22,5 @@ if (PROJECT_IS_TOP_LEVEL)
 	endif()
 endif()
 
+include(CTest)
 add_subdirectory(tests)
