@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tpack/details/binomial.hpp>
+#include <tpack/details/level_columns_view.hpp>
 
 #include <ranges>
 #include <cstddef>
@@ -35,6 +36,24 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 	}
 
 	return num;	
+}
+
+template<std::ranges::random_access_range Indexing, std::ranges::range Partitions>
+constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts) {
+	using std::ranges::begin;
+	using std::ranges::end;
+	using std::ranges::size;
+
+	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+		details::LevelColumnsView columns(part_levels, idx);
+
+		auto [_, wrapped_around] = std::ranges::next_permutation(columns.begin(), columns.end());
+		if (!wrapped_around) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 template<std::ranges::random_access_range Indexing, std::ranges::range Partitions>
