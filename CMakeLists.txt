@@ -7,6 +7,8 @@ project(TensorPacking
 add_library(tensor_packing INTERFACE)
 target_compile_features(tensor_packing INTERFACE cxx_std_20)
 
+add_library(TPack::TPack ALIAS tensor_packing)
+
 if (PROJECT_IS_TOP_LEVEL)
 	include(CheckCXXCompilerFlag)
 
