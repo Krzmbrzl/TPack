@@ -68,7 +68,7 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 		rank += stride * current_rank;
 
 		// Update stride by multiplying it by the max rank of the effective 1D partition
-		stride *= effective_dim;
+		stride *= details::binomial(effective_dim + effective_idx.size() - 1, effective_idx.size());
 	}
 
 	return rank;
