@@ -87,9 +87,9 @@ INSTANTIATE_TEST_SUITE_P(
 		OrbitTest::param_tuple({ 0, 0, 0, 1 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), false),
 		OrbitTest::param_tuple({ 0, 1, 1, 0 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
 		// In case of multiple partitions, they have to be canonical individually without any defined order between them
-		OrbitTest::param_tuple({ 1, 0, 0 }, util::make_info({ 3, 3 }, { { { 0, 1 }, { 2 } }, { { 3 } } }), true),
-		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 }, { 2 } }, { { 3 } } }), true),
-		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 }, { 2 } }, { { 3 } } }), false)
+		OrbitTest::param_tuple({ 1, 0, 0 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
+		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
+		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false)
 	)
 );
 // clang-format on
