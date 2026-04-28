@@ -103,11 +103,12 @@ constexpr Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&part
 		// The dimension of all columns must be equal so we will
 		// simply determine the dimension of the first column
 		col_dims.emplace_back(1);
+		const std::size_t num_cols = size(*begin(part_levels));
 		for (auto &&level : part_levels) {
 			col_dims.back() *= dims[*begin(level)];
 		}
 
-		part_strides.emplace_back(part_strides.back() * col_dims.back());
+		part_strides.emplace_back(part_strides.back() * details::binomial(col_dims.back() + num_cols - 1, num_cols));
 	}
 	part_strides.pop_back();
 
