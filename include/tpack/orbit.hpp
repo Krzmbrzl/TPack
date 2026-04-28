@@ -8,6 +8,8 @@
 #include <cstddef>
 #include <iterator>
 #include <ranges>
+#include <type_traits>
+#include <vector>
 
 namespace tpack {
 
@@ -39,14 +41,28 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 	return num;
 }
 
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
-constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts) {
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
+		  std::ranges::range Counters = std::vector< std::size_t > >
+constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Counters *counters = nullptr) {
 	using std::ranges::begin;
 	using std::ranges::end;
+	using std::ranges::rbegin;
+	using std::ranges::rend;
 	using std::ranges::size;
+
+	std::remove_cvref_t< decltype(rbegin(*counters)) > counter_it;
+	if (counters) {
+		counter_it = rbegin(*counters);
+	}
 
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
 		details::LevelColumnsView columns(part_levels, idx);
+
+		if (counters) {
+			assert(counter_it != rend(*counters));
+			*counter_it += 1;
+			++counter_it;
+		}
 
 		bool has_more = std::next_permutation(columns.begin(), columns.end());
 		if (has_more) {
