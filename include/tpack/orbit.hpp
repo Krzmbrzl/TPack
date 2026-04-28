@@ -5,14 +5,14 @@
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
 
-#include <ranges>
 #include <cstddef>
 #include <iterator>
+#include <ranges>
 
 namespace tpack {
 
 
-template<std::ranges::random_access_range Dimensions, std::ranges::range Partitions>
+template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 	using std::ranges::begin;
 	using std::ranges::end;
@@ -26,8 +26,9 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 
 	for (auto &&part : partitions) {
 		// Effective (combined) dimension of the tuple of indices making up the current partition
-		const std::size_t effective_dim = std::accumulate(begin(part), end(part), 1,
-				[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
+		const std::size_t effective_dim =
+			std::accumulate(begin(part), end(part), 1,
+							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
 		const std::size_t part_size = size(*begin(part));
 
 		// Non-redundant part of the current partition is the number of part_size-combinations
@@ -35,10 +36,10 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 		num *= details::binomial(effective_dim + part_size - 1, part_size);
 	}
 
-	return num;	
+	return num;
 }
 
-template<std::ranges::random_access_range Indexing, std::ranges::range Partitions>
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
 constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts) {
 	using std::ranges::begin;
 	using std::ranges::end;
@@ -47,16 +48,18 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts) {
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
 		details::LevelColumnsView columns(part_levels, idx);
 
-		auto [_, wrapped_around] = std::ranges::next_permutation(columns.begin(), columns.end());
-		if (!wrapped_around) {
+		bool has_more = std::next_permutation(columns.begin(), columns.end());
+		if (has_more) {
 			return true;
 		}
+		// wrap around to next partition
 	}
 
+	// All candidates have been produced -> indexing is now transformed (back) to canonical representative
 	return false;
 }
 
-template<std::ranges::random_access_range Indexing, std::ranges::range Partitions>
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
 	using std::ranges::begin;
 	using std::ranges::end;
@@ -80,4 +83,4 @@ constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
 	return true;
 }
 
-}
+} // namespace tpack

@@ -37,8 +37,7 @@ INSTANTIATE_TEST_SUITE_P(
 );
 // clang-format on
 
-struct OrbitTest
-	: testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::TensorInfo, bool > > {
+struct OrbitTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::TensorInfo, bool > > {
 	using param_tuple = std::tuple< std::vector< std::size_t >, util::TensorInfo, bool >;
 };
 
@@ -55,11 +54,19 @@ TEST_P(OrbitTest, is_canonical) {
 }
 
 TEST_P(OrbitTest, next_orbit_representative) {
-	auto [indexing, info, is_canonical] = GetParam();
+	auto [indexing, info, canonical] = GetParam();
 
+	auto orig = indexing;
+
+	std::size_t num_representatives = 0;
 	do {
-		std::cout << "Iter" << std::endl;
+		num_representatives++;
 	} while (next_orbit_representative(indexing, info.partitions));
+
+	EXPECT_TRUE(is_canonical(indexing, info.partitions));
+
+	// TODO: have a way to compute the expected number of orbit represenatives and compare with that
+	EXPECT_TRUE(num_representatives > 0);
 }
 
 // clang-format off

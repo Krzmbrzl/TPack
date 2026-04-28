@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstddef>
+#include <iterator>
 #include <ranges>
 #include <utility>
 
@@ -16,14 +17,14 @@ public:
 		LevelColumnsView &m_col_view;
 
 		constexpr bool operator<(const Column &other) const {
-			for (auto &&level : m_col_view.m_levels) {
+			for (auto &&level : std::ranges::views::reverse(m_col_view.m_levels)) {
 				std::size_t lhs_idx = level[m_col];
 				std::size_t rhs_idx = level[other.m_col];
 
-				if (m_col_view.m_indexing[lhs_idx] < m_col_view.m_indexing[rhs_idx]) {
+				if (m_col_view.m_indexing[lhs_idx] > m_col_view.m_indexing[rhs_idx]) {
 					return true;
 				}
-				if (m_col_view.m_indexing[lhs_idx] > m_col_view.m_indexing[rhs_idx]) {
+				if (m_col_view.m_indexing[lhs_idx] < m_col_view.m_indexing[rhs_idx]) {
 					return false;
 				}
 			}
@@ -34,26 +35,51 @@ public:
 	};
 
 	struct ColumnIter {
-		using difference_type = std::ptrdiff_t;
-		using element_type    = Column;
-		using pointer         = element_type *;
-		using reference       = element_type &;
+		using difference_type   = std::ptrdiff_t;
+		using element_type      = Column;
+		using iterator_category = std::bidirectional_iterator_tag;
 
 
 		std::size_t m_col;
 		LevelColumnsView *m_col_view;
 
-		constexpr ColumnIter &operator++() { m_col++; }
-		constexpr ColumnIter &operator++(int) { m_col++; }
+		constexpr ColumnIter &operator++() {
+			m_col++;
+			return *this;
+		}
+		constexpr ColumnIter operator++(int) {
+			ColumnIter copy = *this;
+			++(*this);
+			return copy;
+		}
 
-		constexpr ColumnIter &operator--() { m_col--; }
-		constexpr ColumnIter &operator--(int) { m_col--; }
+		constexpr ColumnIter &operator--() {
+			m_col--;
+			return *this;
+		}
+		constexpr ColumnIter operator--(int) {
+			ColumnIter copy = *this;
+			--(*this);
+			return copy;
+		}
 
 		constexpr bool operator==(const ColumnIter &other) const { return m_col == other.m_col; }
 
 		constexpr element_type operator*() { return { m_col, *m_col_view }; }
-		//constexpr const element_type operator*() const { return { m_col, *m_col_view }; }
+		constexpr element_type operator*() const { return { m_col, *m_col_view }; }
 	};
+
+	friend void swap(Column lhs, Column rhs) { lhs.m_col_view.swap_cols(lhs.m_col, rhs.m_col); }
+
+	friend void iter_swap(ColumnIter lhs, ColumnIter rhs) {
+		using std::swap;
+		swap(*lhs, *rhs);
+	}
+
+	static_assert(std::bidirectional_iterator< ColumnIter >);
+	static_assert(std::same_as< std::bidirectional_iterator_tag,
+								typename std::iterator_traits< ColumnIter >::iterator_category >);
+
 
 	using iterator = ColumnIter;
 
@@ -84,13 +110,3 @@ private:
 };
 
 } // namespace tpack::details
-
-namespace std {
-
-template< typename Levels, typename Indexing >
-constexpr void swap(typename tpack::details::LevelColumnsView< Levels, Indexing >::Column &lhs,
-					typename tpack::details::LevelColumnsView< Levels, Indexing >::Column &rhs) {
-	lhs.m_col_view.swap_cols(lhs.m_col, rhs.m_col);
-}
-
-} // namespace std
