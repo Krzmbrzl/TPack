@@ -113,6 +113,14 @@ constexpr Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&part
 
 	std::size_t part_idx = part_strides.size() - 1;
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+		if (col_dims[part_idx] <= 1) {
+			// This partition can only take on a single value (or no value, which would be odd
+			// but implies the same behavior). In other words: the associated entries in the
+			// indexing have to be zero.
+			--part_idx;
+			continue;
+		}
+
 		std::size_t current_rank = rank / part_strides[part_idx];
 		rank -= current_rank * part_strides[part_idx];
 

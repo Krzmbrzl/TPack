@@ -36,6 +36,7 @@ TEST_P(RankTest, unrank) {
 INSTANTIATE_TEST_SUITE_P(
 	TPack, RankTest,
 	::testing::Values(
+		RankTest::param_tuple({ 0 }, util::make_info_l({ 1 }, { 0 }), 0),
 		RankTest::param_tuple({ 0 }, util::make_info_l({ 3 }, { 0 }), 0),
 		RankTest::param_tuple({ 2 }, util::make_info_l({ 3 }, { 0 }), 2),
 		RankTest::param_tuple({ 0, 0 }, util::make_info_p({ 3, 3 }, { { 0 }, { 1 } }), 0),
@@ -74,7 +75,8 @@ INSTANTIATE_TEST_SUITE_P(
 		RankTest::param_tuple({ 0, 0, 1, 0 }, util::make_info({ 3, 3, 3, 3 }, { { { 2, 3 } }, { { 0, 1 } } }), 1),
 		RankTest::param_tuple({ 0, 0, 0, 1 }, util::make_info({ 3, 3, 3, 3 }, { { { 3, 2 } }, { { 0, 1 } } }), 1),
 		RankTest::param_tuple({ 0, 0, 1, 0 }, util::make_info({ 3, 5, 2, 2 }, { { { 0 }, { 1 } }, { { 2, 3 } } }), 15),
-		RankTest::param_tuple({ 0, 1, 2, 2 }, util::make_info({ 3, 5, 3, 3 }, { { { 0 }, { 1 } }, { { 2, 3 } } }), 78)
+		RankTest::param_tuple({ 0, 1, 2, 2 }, util::make_info({ 3, 5, 3, 3 }, { { { 0 }, { 1 } }, { { 2, 3 } } }), 78),
+		RankTest::param_tuple({ 2, 1, 0 }, util::make_info({ 3, 3, 1 }, { { { 0, 1 } }, { { 2 } } }), 4)
 	)
 );
 // clang-format on
