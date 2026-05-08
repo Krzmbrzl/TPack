@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <tpack/orbit.hpp>
 #include <tpack/rank.hpp>
 
 #include <cstdint>
+#include <random>
+#include <vector>
 
 #include <benchmark/benchmark.h>
 
@@ -55,3 +58,39 @@ static void BM_unrank(benchmark::State &state) {
 }
 
 BENCHMARK(BM_unrank)->ArgsProduct({ { 1, 2, 3, 4 }, { 1, 2, 3, 4 }, { 1, 2, 3, 4 } });
+
+
+static void BM_unrank_with_access(benchmark::State &state) {
+	const std::vector< std::vector< std::vector< std::size_t > > > partitions = { { { 0, 1 }, { 2, 3 } } };
+	const std::vector< std::size_t > dimensions                               = { 300, 300, 30, 30 };
+
+	std::vector< double > dummy(300 * 300 * 30 * 30);
+	std::random_device rnd_device;
+	std::mt19937_64 engine(rnd_device());
+	std::uniform_real_distribution< double > dist(0, 1);
+	for (double &val : dummy) {
+		val = dist(engine);
+	}
+
+	auto flat_idx = [dimensions](const auto &indexing) {
+		std::size_t idx    = 0;
+		std::size_t stride = 1;
+		for (std::size_t i = 0; i < indexing.size(); ++i) {
+			idx += indexing[i] * stride;
+			stride *= dimensions[i];
+		}
+		return idx;
+	};
+
+	std::size_t num_orbits = tpack::num_orbits(dimensions, partitions);
+
+	for (auto _ : state) {
+		for (std::size_t rank = 0; rank < num_orbits; ++rank) {
+			const auto indexing = tpack::unrank(12, dimensions, partitions);
+			double element      = dummy.at(flat_idx(indexing));
+			benchmark::DoNotOptimize(element);
+		}
+	}
+}
+
+BENCHMARK(BM_unrank_with_access);
