@@ -6,6 +6,7 @@
 #include <tpack/details/level_columns_view.hpp>
 
 #include <cstddef>
+#include <numeric>
 #include <iterator>
 #include <ranges>
 #include <type_traits>
