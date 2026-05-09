@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <numeric>
+#include <limits>
 
 namespace tpack::details {
 
@@ -15,31 +15,44 @@ namespace tpack::details {
 constexpr std::size_t binomial(std::size_t n, std::size_t k) {
 	assert(n >= k);
 
+	if (n == k) {
+		return 1;
+	}
+
+	if (k == 1) {
+		return n;
+	}
+
 	// cmp. https://en.wikipedia.org/wiki/Binomial_coefficient#Multiplicative_formula
 
 	// Note: (n over k) == (n over (n - k))
 	// so we can choose the lower of the two as the bound
 	const std::size_t bound = std::min(k, n - k);
 
-	// We split numerator and denominator so that we can perform the entire
-	// computation over integers (individual factors in the multiplicative
-	// formula are not guaranteed to be integers).
-	// We compute the denominator in one go in advance in order to make the GCD
-	// computations as likely to succeed as possible and thus achieve maximal
-	// simplification of our numerator to avoid integer overflows as much as possible
-	std::size_t numerator   = 1;
-	std::size_t denominator = factorial(bound);
-	for (std::size_t i = 1; i <= bound; ++i) {
-		numerator *= n + 1 - i;
+	std::size_t result = n;
+	std::size_t denom  = 2;
+	for (std::size_t i = 1; i < bound; ++i) {
+		// We must not overflow result (that would spoil our computation)
+		assert(std::numeric_limits< std::size_t >::max() / (n - i) >= result);
 
-		const std::size_t factor = std::gcd(numerator, denominator);
-		numerator /= factor;
-		denominator /= factor;
+		result *= n - i;
+
+		// In order to avoid integer overflows, we try to simplify the result as soon as possible.
+		// We start with the lowest factor of the denominator (2) as this is the first factor we can
+		// guarantee that result is divisible by. In fact, we can guarantee that among the set of
+		// factors (n), (n - 1), (n - 2), ..., (n - i), one of them must be divisible by i + 1.
+		// This is also why we can guarantee that in the bound iterations, we will be able to cleanly
+		// divide all bound factors (1, 2, 3, ..., bound).
+		while (denom <= bound && result % denom == 0) {
+			result /= denom;
+			++denom;
+		}
 	}
 
-	assert((numerator % denominator) == 0);
+	// +1 because we always increment denom after we have divided by it
+	assert(denom == bound + 1);
 
-	return numerator / denominator;
+	return result;
 }
 
 } // namespace tpack::details
