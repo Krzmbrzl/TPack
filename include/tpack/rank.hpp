@@ -154,7 +154,7 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 		for (std::size_t col = 0; col < num_cols && current_rank > 0; ++col) {
 #ifdef TPACK_UNRANK_BINARY_SEARCH
 			const std::size_t min_n = 1;
-			const std::size_t max_n = col_dims[part_idx] - 1;
+			const std::size_t max_n = col_dim - 1;
 
 			auto generator = std::ranges::views::reverse(std::ranges::views::iota(min_n, max_n + 1))
 							 | std::ranges::views::transform([num_cols, col](std::size_t val) {
