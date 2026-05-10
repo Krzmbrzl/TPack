@@ -21,8 +21,8 @@ static void BM_rank(benchmark::State &state) {
 			partitions.back().emplace_back();
 			for (std::int64_t col = 0; col < state.range(2); ++col) {
 				partitions.back().back().emplace_back(counter++);
-				dimensions.emplace_back(20);
-				indexing.emplace_back(12);
+				dimensions.emplace_back(6);
+				indexing.emplace_back(5);
 			}
 		}
 	}
@@ -33,7 +33,9 @@ static void BM_rank(benchmark::State &state) {
 	}
 }
 
-BENCHMARK(BM_rank)->ArgsProduct({ { 1, 2, 3, 4 }, { 1, 2, 3, 4 }, { 1, 2, 3, 4 } });
+// clang-format off
+BENCHMARK(BM_rank)->ArgsProduct({ { 1, 2, 3 }, { 1, 2, 3, 4 }, { 1, 2 } });
+// clang-format on
 
 
 static void BM_unrank(benchmark::State &state) {
@@ -46,18 +48,27 @@ static void BM_unrank(benchmark::State &state) {
 			partitions.back().emplace_back();
 			for (std::int64_t col = 0; col < state.range(2); ++col) {
 				partitions.back().back().emplace_back(counter++);
-				dimensions.emplace_back(20);
+				dimensions.emplace_back(6);
 			}
 		}
 	}
 
+	std::random_device rnd_device;
+	std::mt19937_64 engine(rnd_device());
+	std::uniform_int_distribution< std::size_t > dist(0, 12);
+	const std::size_t rank = dist(engine);
+
+	std::vector< std::size_t > indexing(dimensions.size());
+
 	for (auto _ : state) {
-		auto indexing = tpack::unrank(12, dimensions, partitions);
+		tpack::unrank(indexing, rank, dimensions, partitions);
 		benchmark::DoNotOptimize(indexing);
 	}
 }
 
-BENCHMARK(BM_unrank)->ArgsProduct({ { 1, 2, 3, 4 }, { 1, 2, 3, 4 }, { 1, 2, 3, 4 } });
+// clang-format off
+BENCHMARK(BM_unrank)->ArgsProduct({ { 1, 2, 3 }, { 1, 2, 3, 4 }, { 1, 2, } });
+// clang-format on
 
 
 static void BM_unrank_with_access(benchmark::State &state) {
