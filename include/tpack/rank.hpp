@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <limits>
 #include <ranges>
 #include <vector>
 
@@ -99,46 +100,56 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 
 	std::ranges::fill(idx, 0);
 
-	// Compute strides
-	std::vector< std::size_t > part_strides;
-	part_strides.reserve(size(parts));
-
-	std::vector< std::size_t > col_dims;
-	col_dims.reserve(size(parts));
-
-	part_strides.emplace_back(1);
-	for (auto &&part_levels : parts) {
-		// The dimension of all columns must be equal so we will
-		// simply determine the dimension of the first column
-		col_dims.emplace_back(1);
+	// Compute the stride for the last partition, which is given by the product of
+	// the dimensions of all partitions prior to it.
+	std::size_t part_stride = 1;
+	for (auto &&part_levels : parts | std::ranges::views::take(size(parts) - 1)) {
+		std::size_t col_dim        = 1;
 		const std::size_t num_cols = size(*begin(part_levels));
 		for (auto &&level : part_levels) {
-			col_dims.back() *= dims[*begin(level)];
+			col_dim *= dims[*begin(level)];
 		}
 
-		part_strides.emplace_back(part_strides.back() * details::binomial(col_dims.back() + num_cols - 1, num_cols));
+		const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
+		assert(std::numeric_limits< std::size_t >::max() / current_part_dim >= part_stride);
+		part_stride *= current_part_dim;
 	}
-	part_strides.pop_back();
 
-	std::size_t part_idx = part_strides.size() - 1;
+	bool first = true;
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
-		if (col_dims[part_idx] <= 1) {
+		const std::size_t num_cols = size(*begin(part_levels));
+		// The dimension of all columns must be equal so we will
+		// simply determine the dimension of the first column
+		std::size_t col_dim = 1;
+		for (auto &&level : part_levels) {
+			col_dim *= dims[*begin(level)];
+		}
+
+		if (!first) {
+			// Update the partition stride for the current partition by dividing part_stride
+			// by the dimension of the current partition
+			const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
+			assert(part_stride % current_part_dim == 0);
+			part_stride /= current_part_dim;
+			assert(part_stride >= 1);
+		} else {
+			first = false;
+		}
+
+		if (col_dim <= 1) {
 			// This partition can only take on a single value (or no value, which would be odd
 			// but implies the same behavior). In other words: the associated entries in the
 			// indexing have to be zero.
-			--part_idx;
 			continue;
 		}
 
-		std::size_t current_rank = rank / part_strides[part_idx];
-		rank -= current_rank * part_strides[part_idx];
+		std::size_t current_rank = rank / part_stride;
+		rank -= current_rank * part_stride;
 
 		// Unrank current_rank into effective indexing
 		[[maybe_unused]] const std::size_t effective_size = size(*begin(part_levels));
 		assert(effective_idx.size() >= effective_size);
 		std::ranges::fill(effective_idx, 0);
-
-		std::size_t num_cols = size(*begin(part_levels));
 
 		for (std::size_t col = 0; col < num_cols && current_rank > 0; ++col) {
 #ifdef TPACK_UNRANK_BINARY_SEARCH
@@ -208,9 +219,6 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 			}
 			--level;
 		}
-
-
-		--part_idx;
 	}
 
 	assert(is_canonical(idx, parts));
