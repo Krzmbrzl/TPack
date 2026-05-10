@@ -152,7 +152,6 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 		std::ranges::fill(effective_idx, 0);
 
 		for (std::size_t col = 0; col < num_cols && current_rank > 0; ++col) {
-#ifdef TPACK_UNRANK_BINARY_SEARCH
 			const std::size_t min_n = 1;
 			const std::size_t max_n = col_dim - 1;
 
@@ -160,6 +159,7 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 							 | std::ranges::views::transform([num_cols, col](std::size_t val) {
 								   return details::binomial(val + num_cols - col - 1, num_cols - col);
 							   });
+
 			std::size_t num_combinations = 0;
 			auto it = std::ranges::partition_point(generator, [&num_combinations, current_rank](std::size_t val) {
 				if (val <= current_rank) {
@@ -170,26 +170,14 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 
 			std::size_t n = 0;
 			if (it != end(generator)) {
+				static_assert(std::sized_sentinel_for< decltype(it), decltype(begin(generator)) >,
+							  "Distance computation not possible in O(1)");
 				n = max_n - std::ranges::distance(begin(generator), it);
 			}
 
 			assert(num_combinations <= current_rank);
 			current_rank -= num_combinations;
 			effective_idx[col] = n;
-#else
-			std::size_t n                     = 0;
-			std::size_t num_combinations      = 0;
-			std::size_t prev_num_combinations = 0;
-
-			do {
-				prev_num_combinations = num_combinations;
-				effective_idx[col]    = n;
-				++n;
-				num_combinations = details::binomial(n + num_cols - col - 1, num_cols - col);
-			} while (num_combinations <= current_rank);
-			assert(prev_num_combinations <= current_rank);
-			current_rank -= prev_num_combinations;
-#endif
 		}
 
 		assert(current_rank == 0);
