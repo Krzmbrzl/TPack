@@ -73,9 +73,9 @@ BENCHMARK(BM_unrank)->ArgsProduct({ { 1, 2, 3 }, { 1, 2, 3, 4 }, { 1, 2, } });
 
 static void BM_unrank_with_access(benchmark::State &state) {
 	const std::vector< std::vector< std::vector< std::size_t > > > partitions = { { { 0, 1 }, { 2, 3 } } };
-	const std::vector< std::size_t > dimensions                               = { 300, 300, 30, 30 };
+	const std::vector< std::size_t > dimensions                               = { 215, 215, 13, 13 };
 
-	std::vector< double > dummy(300 * 300 * 30 * 30);
+	std::vector< double > dummy(215 * 215 * 13 * 13);
 	std::random_device rnd_device;
 	std::mt19937_64 engine(rnd_device());
 	std::uniform_real_distribution< double > dist(0, 1);
