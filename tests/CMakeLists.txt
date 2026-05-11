@@ -14,6 +14,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(tensor_packing_tests
 	"binomial.cpp"
+	"column_view.cpp"
 	"orbit.cpp"
 	"rank.cpp"
 )

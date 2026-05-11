@@ -2,88 +2,201 @@
 
 #pragma once
 
+#include <compare>
+#include <concepts>
 #include <cstddef>
 #include <iterator>
 #include <ranges>
 #include <utility>
+#include <vector>
 
 namespace tpack::details {
 
-template< std::ranges::range Levels, std::ranges::random_access_range Indexing > class LevelColumnsView {
+template< typename Proxy, std::ranges::range Levels > class LevelColumnsViewBase {
 public:
-	friend struct Column;
-	struct Column {
-		std::size_t m_col;
-		LevelColumnsView &m_col_view;
+	// See also https://artificial-mind.net/blog/2020/11/28/std-sort-multiple-ranges
+	struct ColVal {
+		std::vector< typename Proxy::value_type > values;
 
-		constexpr bool operator<(const Column &other) const {
-			for (auto &&level : std::ranges::views::reverse(m_col_view.m_levels)) {
-				std::size_t lhs_idx = level[m_col];
-				std::size_t rhs_idx = level[other.m_col];
+		friend auto operator<=>(const ColVal &lhs, const ColVal &rhs) = default;
+		friend bool operator==(const ColVal &lhs, const ColVal &rhs)  = default;
+	};
+	static_assert(std::totally_ordered< ColVal >);
+	struct ColRef {
+		ColRef(std::size_t col, LevelColumnsViewBase &view) : m_col(col), m_col_view(view) {}
 
-				if (m_col_view.m_indexing[lhs_idx] > m_col_view.m_indexing[rhs_idx]) {
-					return true;
-				}
-				if (m_col_view.m_indexing[lhs_idx] < m_col_view.m_indexing[rhs_idx]) {
-					return false;
+		ColRef &operator=(ColRef &&other) {
+			for (auto &level : m_col_view.m_levels) {
+				level[m_col] = std::move(m_col_view.m_proxy[level[other.m_col]]);
+			}
+
+			return *this;
+		}
+		ColRef &operator=(ColRef &&other) const {
+			for (auto &level : m_col_view.m_levels) {
+				level[m_col] = std::move(m_col_view.m_proxy[level[other.m_col]]);
+			}
+
+			return *this;
+		}
+
+		ColRef &operator=(ColVal &&val) {
+			std::size_t i = 0;
+			for (auto &level : m_col_view.m_levels) {
+				m_col_view.m_proxy[level[m_col]] = std::move(val.values[i]);
+				++i;
+			}
+
+			return *this;
+		}
+		ColRef &operator=(ColVal &&val) const {
+			std::size_t i = 0;
+			for (auto &level : m_col_view.m_levels) {
+				m_col_view.m_proxy[level[m_col]] = std::move(val.values[i]);
+				++i;
+			}
+
+			return *this;
+		}
+
+		operator ColVal() const & {
+			using std::ranges::size;
+
+			ColVal val{};
+			val.values.reserve(size(m_col_view.m_levels));
+
+			for (auto &level : m_col_view.m_levels) {
+				val.values.emplace_back(std::move(m_col_view.m_proxy[level[m_col]]));
+			}
+
+			return val;
+		}
+
+		operator ColVal() && {
+			using std::ranges::size;
+
+			ColVal val{};
+			val.values.reserve(size(m_col_view.m_levels));
+
+			for (auto &level : m_col_view.m_levels) {
+				val.values.emplace_back(std::move(m_col_view.m_proxy[level[m_col]]));
+			}
+
+			return val;
+		}
+
+		friend void swap(ColRef lhs, ColRef rhs) {
+			using std::swap;
+			for (auto &level : lhs.m_col_view.m_levels) {
+				swap(lhs.m_col_view.m_proxy[level[lhs.m_col]], rhs.m_col_view.m_proxy[level[rhs.m_col]]);
+			}
+		}
+
+		friend auto operator<=>(const ColRef &lhs, const ColRef &rhs) {
+			for (auto &level : std::ranges::views::reverse(lhs.m_col_view.m_levels)) {
+				const auto &lhs_val = lhs.m_col_view.m_proxy[level[lhs.m_col]];
+				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
+				if (lhs_val != rhs_val) {
+					return lhs_val <=> rhs_val;
 				}
 			}
 
-			// They are equal
-			return false;
+			return decltype(std::declval< typename Proxy::value_type >()
+							<=> std::declval< typename Proxy::value_type >())::equivalent;
 		}
+		friend auto operator<=>(const ColVal &lhs, const ColRef &rhs) {
+			std::size_t i = 0;
+			for (auto &level : std::ranges::views::reverse(rhs.m_col_view.m_levels)) {
+				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
+				if (lhs.values[i] != rhs_val) {
+					return lhs.values[i] <=> rhs_val;
+				}
+				++i;
+			}
+
+			return decltype(std::declval< typename Proxy::value_type >()
+							<=> std::declval< typename Proxy::value_type >())::equivalent;
+		}
+		friend auto operator<=>(const ColRef &lhs, const ColVal &rhs) {
+			// Inverts less_than or greater_than result of rhs <=> lhs
+			return 0 <=> (rhs <=> lhs);
+		}
+		friend bool operator==(const ColRef &lhs, const ColRef &rhs) { return (lhs <=> rhs) == 0; }
+		friend bool operator==(const ColVal &lhs, const ColRef &rhs) { return (lhs <=> rhs) == 0; }
+		friend bool operator==(const ColRef &lhs, const ColVal &rhs) { return (lhs <=> rhs) == 0; }
+
+		std::size_t m_col;
+		LevelColumnsViewBase &m_col_view;
 	};
 
-	struct ColumnIter {
+
+	struct ColIter {
 		using difference_type   = std::ptrdiff_t;
-		using element_type      = Column;
-		using iterator_category = std::bidirectional_iterator_tag;
+		using value_type        = ColVal;
+		using reference         = ColRef;
+		using iterator_category = std::random_access_iterator_tag;
 
 
 		std::size_t m_col;
-		LevelColumnsView *m_col_view;
+		LevelColumnsViewBase *m_col_view;
 
-		constexpr ColumnIter &operator++() {
-			m_col++;
+		constexpr std::strong_ordering operator<=>(const ColIter &other) const { return m_col <=> other.m_col; }
+
+		constexpr difference_type operator-(const ColIter &other) const { return m_col - other.m_col; }
+		constexpr difference_type operator+(const ColIter &other) const { return m_col + other.m_col; }
+
+		constexpr ColIter &operator+=(difference_type amount) {
+			m_col += amount;
 			return *this;
 		}
-		constexpr ColumnIter operator++(int) {
-			ColumnIter copy = *this;
+		constexpr ColIter &operator-=(difference_type amount) {
+			m_col -= amount;
+			return *this;
+		}
+		friend constexpr ColIter operator+(const ColIter &iter, difference_type amount) {
+			ColIter copy = iter;
+			copy += amount;
+			return copy;
+		}
+		friend constexpr ColIter operator+(difference_type amount, const ColIter &iter) { return iter + amount; }
+		friend constexpr ColIter operator-(const ColIter &iter, difference_type amount) {
+			ColIter copy = iter;
+			copy -= amount;
+			return copy;
+		}
+		friend constexpr ColIter operator-(difference_type amount, const ColIter &iter) { return iter - amount; }
+
+		constexpr ColIter &operator++() { return *this += 1; }
+		constexpr ColIter operator++(int) {
+			ColIter copy = *this;
 			++(*this);
 			return copy;
 		}
 
-		constexpr ColumnIter &operator--() {
-			m_col--;
-			return *this;
-		}
-		constexpr ColumnIter operator--(int) {
-			ColumnIter copy = *this;
+		constexpr ColIter &operator--() { return *this -= 1; }
+		constexpr ColIter operator--(int) {
+			ColIter copy = *this;
 			--(*this);
 			return copy;
 		}
 
-		constexpr bool operator==(const ColumnIter &other) const { return m_col == other.m_col; }
+		constexpr reference operator[](difference_type idx) const { return { m_col + idx, *m_col_view }; }
 
-		constexpr element_type operator*() { return { m_col, *m_col_view }; }
-		constexpr element_type operator*() const { return { m_col, *m_col_view }; }
+		constexpr bool operator==(const ColIter &other) const { return m_col == other.m_col; }
+
+		constexpr reference operator*() { return { m_col, *m_col_view }; }
+		constexpr reference operator*() const { return { m_col, *m_col_view }; }
 	};
 
-	friend void swap(Column lhs, Column rhs) { lhs.m_col_view.swap_cols(lhs.m_col, rhs.m_col); }
+	friend void iter_swap(ColIter lhs, ColIter rhs) { swap(*lhs, *rhs); }
 
-	friend void iter_swap(ColumnIter lhs, ColumnIter rhs) {
-		using std::swap;
-		swap(*lhs, *rhs);
-	}
-
-	static_assert(std::bidirectional_iterator< ColumnIter >);
-	static_assert(std::same_as< std::bidirectional_iterator_tag,
-								typename std::iterator_traits< ColumnIter >::iterator_category >);
+	static_assert(std::bidirectional_iterator< ColIter >);
+	static_assert(std::random_access_iterator< ColIter >);
 
 
-	using iterator = ColumnIter;
+	using iterator = ColIter;
 
-	LevelColumnsView(Levels &levels, Indexing &idx) : m_levels(levels), m_indexing(idx) {}
+	LevelColumnsViewBase(Levels &levels, Proxy &&proxy) : m_levels(levels), m_proxy(std::forward< Proxy >(proxy)) {}
 
 	constexpr std::size_t num_cols() const {
 		using std::ranges::begin;
@@ -94,19 +207,66 @@ public:
 	constexpr iterator begin() { return { 0, this }; }
 	constexpr iterator end() { return { num_cols(), this }; }
 
-	constexpr void swap_cols(std::size_t lhs, std::size_t rhs) {
-		for (auto &&level : m_levels) {
-			std::size_t lhs_idx = level[lhs];
-			std::size_t rhs_idx = level[rhs];
-
-			using std::swap;
-			swap(m_indexing[lhs_idx], m_indexing[rhs_idx]);
-		}
-	}
+	constexpr ColRef operator[](std::size_t col) { return { col, *this }; }
 
 private:
 	Levels &m_levels;
+	Proxy m_proxy;
+};
+
+template< std::ranges::random_access_range Indexing > struct IndexingProxy {
+	using value_type      = std::size_t;
+	using reference       = std::size_t &;
+	using const_reference = const std::size_t &;
+
+	IndexingProxy(Indexing &indexing) : m_indexing(indexing) {}
+
+	std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const {
+		return m_indexing[lhs_idx] <=> m_indexing[rhs_idx];
+	}
+
+	void swap(std::size_t lhs_idx, std::size_t rhs_idx) {
+		using std::swap;
+		swap(m_indexing[lhs_idx], m_indexing[rhs_idx]);
+	}
+
+	reference operator[](std::size_t idx) { return m_indexing[idx]; }
+
+	const_reference operator[](std::size_t idx) const { return m_indexing[idx]; }
+
 	Indexing &m_indexing;
 };
+
+struct LevelProxy {
+	using value_type      = std::size_t;
+	using reference       = std::size_t &;
+	using const_reference = const std::size_t &;
+
+	std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const { return lhs_idx <=> rhs_idx; }
+
+	void swap(reference lhs_idx, reference rhs_idx) {
+		using std::swap;
+		swap(lhs_idx, rhs_idx);
+	}
+
+	reference operator[](reference idx) { return idx; }
+
+	const_reference operator[](const_reference idx) const { return idx; }
+};
+
+template< std::ranges::range Levels, std::ranges::random_access_range Indexing >
+struct LevelColumnsIndexingView : LevelColumnsViewBase< IndexingProxy< Indexing >, Levels > {
+	LevelColumnsIndexingView(Levels &levels, Indexing &idx)
+		: LevelColumnsViewBase< IndexingProxy< Indexing >, Levels >(levels, IndexingProxy(idx)) {}
+};
+
+template< std::ranges::range Levels > struct LevelColumnsView : LevelColumnsViewBase< LevelProxy, Levels > {
+	LevelColumnsView(Levels &levels) : LevelColumnsViewBase< LevelProxy, Levels >(levels, LevelProxy{}) {}
+};
+
+
+static_assert(std::totally_ordered< LevelColumnsView< std::vector< std::vector< std::size_t > > >::ColRef >);
+static_assert(std::totally_ordered_with< LevelColumnsView< std::vector< std::vector< std::size_t > > >::ColRef,
+										 LevelColumnsView< std::vector< std::vector< std::size_t > > >::ColVal >);
 
 } // namespace tpack::details

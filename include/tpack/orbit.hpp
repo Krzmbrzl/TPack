@@ -6,8 +6,8 @@
 #include <tpack/details/level_columns_view.hpp>
 
 #include <cstddef>
-#include <numeric>
 #include <iterator>
+#include <numeric>
 #include <ranges>
 #include <type_traits>
 #include <vector>
@@ -57,7 +57,7 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Cou
 	}
 
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
-		details::LevelColumnsView columns(part_levels, idx);
+		details::LevelColumnsIndexingView columns(part_levels, idx);
 
 		if (counters) {
 			assert(counter_it != rend(*counters));
@@ -65,7 +65,7 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Cou
 			++counter_it;
 		}
 
-		bool has_more = std::next_permutation(columns.begin(), columns.end());
+		auto [_, has_more] = std::ranges::next_permutation(columns, std::greater<>{});
 		if (has_more) {
 			return true;
 		}
