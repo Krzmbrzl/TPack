@@ -46,11 +46,7 @@ TEST_P(OrbitTest, is_canonical) {
 
 	bool actual = is_canonical(indexing, info.partitions);
 
-	if (expected) {
-		EXPECT_TRUE(actual);
-	} else {
-		EXPECT_FALSE(actual);
-	}
+	EXPECT_EQ(expected, actual);
 }
 
 TEST_P(OrbitTest, next_orbit_representative) {
@@ -65,8 +61,8 @@ TEST_P(OrbitTest, next_orbit_representative) {
 
 	EXPECT_TRUE(is_canonical(indexing, info.partitions));
 
-	// TODO: have a way to compute the expected number of orbit represenatives and compare with that
-	EXPECT_TRUE(num_representatives > 0);
+	// TODO: have a way to compute the expected number of orbit representatives and compare with that
+	EXPECT_GE(num_representatives, 1);
 }
 
 // clang-format off
