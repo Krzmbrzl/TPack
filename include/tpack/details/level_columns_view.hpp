@@ -23,16 +23,16 @@ public:
 	};
 	static_assert(std::totally_ordered< ColVal >);
 	struct ColRef {
-		ColRef(std::size_t col, LevelColumnsViewBase &view) : m_col(col), m_col_view(view) {}
+		constexpr ColRef(std::size_t col, LevelColumnsViewBase &view) : m_col(col), m_col_view(view) {}
 
-		ColRef &operator=(ColRef &&other) {
+		constexpr ColRef &operator=(ColRef &&other) {
 			for (auto &level : m_col_view.m_levels) {
 				level[m_col] = std::move(m_col_view.m_proxy[level[other.m_col]]);
 			}
 
 			return *this;
 		}
-		ColRef &operator=(ColRef &&other) const {
+		constexpr ColRef &operator=(ColRef &&other) const {
 			for (auto &level : m_col_view.m_levels) {
 				level[m_col] = std::move(m_col_view.m_proxy[level[other.m_col]]);
 			}
@@ -40,7 +40,7 @@ public:
 			return *this;
 		}
 
-		ColRef &operator=(ColVal &&val) {
+		constexpr ColRef &operator=(ColVal &&val) {
 			std::size_t i = 0;
 			for (auto &level : m_col_view.m_levels) {
 				m_col_view.m_proxy[level[m_col]] = std::move(val.values[i]);
@@ -49,7 +49,7 @@ public:
 
 			return *this;
 		}
-		ColRef &operator=(ColVal &&val) const {
+		constexpr ColRef &operator=(ColVal &&val) const {
 			std::size_t i = 0;
 			for (auto &level : m_col_view.m_levels) {
 				m_col_view.m_proxy[level[m_col]] = std::move(val.values[i]);
@@ -59,7 +59,7 @@ public:
 			return *this;
 		}
 
-		operator ColVal() const & {
+		constexpr operator ColVal() const & {
 			using std::ranges::size;
 
 			ColVal val{};
@@ -72,7 +72,7 @@ public:
 			return val;
 		}
 
-		operator ColVal() && {
+		constexpr operator ColVal() && {
 			using std::ranges::size;
 
 			ColVal val{};
@@ -85,14 +85,14 @@ public:
 			return val;
 		}
 
-		friend void swap(ColRef lhs, ColRef rhs) {
+		friend constexpr void swap(ColRef lhs, ColRef rhs) {
 			using std::swap;
 			for (auto &level : lhs.m_col_view.m_levels) {
 				swap(lhs.m_col_view.m_proxy[level[lhs.m_col]], rhs.m_col_view.m_proxy[level[rhs.m_col]]);
 			}
 		}
 
-		friend auto operator<=>(const ColRef &lhs, const ColRef &rhs) {
+		friend constexpr auto operator<=>(const ColRef &lhs, const ColRef &rhs) {
 			for (auto &level : std::ranges::views::reverse(lhs.m_col_view.m_levels)) {
 				const auto &lhs_val = lhs.m_col_view.m_proxy[level[lhs.m_col]];
 				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
@@ -104,7 +104,7 @@ public:
 			return decltype(std::declval< typename Proxy::value_type >()
 							<=> std::declval< typename Proxy::value_type >())::equivalent;
 		}
-		friend auto operator<=>(const ColVal &lhs, const ColRef &rhs) {
+		friend constexpr auto operator<=>(const ColVal &lhs, const ColRef &rhs) {
 			std::size_t i = 0;
 			for (auto &level : std::ranges::views::reverse(rhs.m_col_view.m_levels)) {
 				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
@@ -117,13 +117,13 @@ public:
 			return decltype(std::declval< typename Proxy::value_type >()
 							<=> std::declval< typename Proxy::value_type >())::equivalent;
 		}
-		friend auto operator<=>(const ColRef &lhs, const ColVal &rhs) {
+		friend constexpr auto operator<=>(const ColRef &lhs, const ColVal &rhs) {
 			// Inverts less_than or greater_than result of rhs <=> lhs
 			return 0 <=> (rhs <=> lhs);
 		}
-		friend bool operator==(const ColRef &lhs, const ColRef &rhs) { return (lhs <=> rhs) == 0; }
-		friend bool operator==(const ColVal &lhs, const ColRef &rhs) { return (lhs <=> rhs) == 0; }
-		friend bool operator==(const ColRef &lhs, const ColVal &rhs) { return (lhs <=> rhs) == 0; }
+		friend constexpr bool operator==(const ColRef &lhs, const ColRef &rhs) { return (lhs <=> rhs) == 0; }
+		friend constexpr bool operator==(const ColVal &lhs, const ColRef &rhs) { return (lhs <=> rhs) == 0; }
+		friend constexpr bool operator==(const ColRef &lhs, const ColVal &rhs) { return (lhs <=> rhs) == 0; }
 
 		std::size_t m_col;
 		LevelColumnsViewBase &m_col_view;
@@ -188,7 +188,7 @@ public:
 		constexpr reference operator*() const { return { m_col, *m_col_view }; }
 	};
 
-	friend void iter_swap(ColIter lhs, ColIter rhs) { swap(*lhs, *rhs); }
+	friend constexpr void iter_swap(ColIter lhs, ColIter rhs) { swap(*lhs, *rhs); }
 
 	static_assert(std::bidirectional_iterator< ColIter >);
 	static_assert(std::random_access_iterator< ColIter >);
@@ -196,7 +196,8 @@ public:
 
 	using iterator = ColIter;
 
-	LevelColumnsViewBase(Levels &levels, Proxy &&proxy) : m_levels(levels), m_proxy(std::forward< Proxy >(proxy)) {}
+	constexpr LevelColumnsViewBase(Levels &levels, Proxy &&proxy)
+		: m_levels(levels), m_proxy(std::forward< Proxy >(proxy)) {}
 
 	constexpr std::size_t num_cols() const {
 		using std::ranges::begin;
