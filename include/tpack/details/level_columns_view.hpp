@@ -220,20 +220,20 @@ template< std::ranges::random_access_range Indexing > struct IndexingProxy {
 	using reference       = std::add_lvalue_reference_t< value_type >;
 	using const_reference = std::add_lvalue_reference_t< std::add_const_t< value_type > >;
 
-	IndexingProxy(Indexing &indexing) : m_indexing(indexing) {}
+	constexpr IndexingProxy(Indexing &indexing) : m_indexing(indexing) {}
 
-	std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const {
+	constexpr std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const {
 		return m_indexing[lhs_idx] <=> m_indexing[rhs_idx];
 	}
 
-	void swap(std::size_t lhs_idx, std::size_t rhs_idx) {
+	constexpr void swap(std::size_t lhs_idx, std::size_t rhs_idx) {
 		using std::swap;
 		swap(m_indexing[lhs_idx], m_indexing[rhs_idx]);
 	}
 
-	reference operator[](std::size_t idx) { return m_indexing[idx]; }
+	constexpr reference operator[](std::size_t idx) { return m_indexing[idx]; }
 
-	const_reference operator[](std::size_t idx) const { return m_indexing[idx]; }
+	constexpr const_reference operator[](std::size_t idx) const { return m_indexing[idx]; }
 
 	Indexing &m_indexing;
 };
@@ -243,16 +243,16 @@ template< std::ranges::range Levels > struct LevelProxy {
 	using reference       = std::add_lvalue_reference_t< value_type >;
 	using const_reference = std::add_lvalue_reference_t< std::add_const_t< value_type > >;
 
-	std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const { return lhs_idx <=> rhs_idx; }
+	constexpr std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const { return lhs_idx <=> rhs_idx; }
 
-	void swap(reference lhs_idx, reference rhs_idx) {
+	constexpr void swap(reference lhs_idx, reference rhs_idx) {
 		using std::swap;
 		swap(lhs_idx, rhs_idx);
 	}
 
-	reference operator[](reference idx) { return idx; }
+	constexpr reference operator[](reference idx) { return idx; }
 
-	const_reference operator[](const_reference idx) const { return idx; }
+	constexpr const_reference operator[](const_reference idx) const { return idx; }
 };
 
 template< std::ranges::range Levels, std::ranges::random_access_range Indexing >
