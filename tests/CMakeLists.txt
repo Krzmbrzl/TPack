@@ -16,6 +16,7 @@ add_executable(tensor_packing_tests
 	"binomial.cpp"
 	"column_view.cpp"
 	"orbit.cpp"
+	"partition.cpp"
 	"rank.cpp"
 )
 target_link_libraries(tensor_packing_tests PRIVATE tensor_packing gtest_main)
