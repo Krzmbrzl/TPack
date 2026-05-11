@@ -216,9 +216,9 @@ private:
 };
 
 template< std::ranges::random_access_range Indexing > struct IndexingProxy {
-	using value_type      = std::size_t;
-	using reference       = std::size_t &;
-	using const_reference = const std::size_t &;
+	using value_type      = std::ranges::range_value_t< Indexing >;
+	using reference       = std::add_lvalue_reference_t< value_type >;
+	using const_reference = std::add_lvalue_reference_t< std::add_const_t< value_type > >;
 
 	IndexingProxy(Indexing &indexing) : m_indexing(indexing) {}
 
@@ -238,10 +238,10 @@ template< std::ranges::random_access_range Indexing > struct IndexingProxy {
 	Indexing &m_indexing;
 };
 
-struct LevelProxy {
-	using value_type      = std::size_t;
-	using reference       = std::size_t &;
-	using const_reference = const std::size_t &;
+template< std::ranges::range Levels > struct LevelProxy {
+	using value_type      = std::ranges::range_value_t< std::ranges::range_value_t< Levels > >;
+	using reference       = std::add_lvalue_reference_t< value_type >;
+	using const_reference = std::add_lvalue_reference_t< std::add_const_t< value_type > >;
 
 	std::weak_ordering cmp(std::size_t lhs_idx, std::size_t rhs_idx) const { return lhs_idx <=> rhs_idx; }
 
@@ -261,8 +261,9 @@ struct LevelColumnsIndexingView : LevelColumnsViewBase< IndexingProxy< Indexing 
 		: LevelColumnsViewBase< IndexingProxy< Indexing >, Levels >(levels, IndexingProxy(idx)) {}
 };
 
-template< std::ranges::range Levels > struct LevelColumnsView : LevelColumnsViewBase< LevelProxy, Levels > {
-	LevelColumnsView(Levels &levels) : LevelColumnsViewBase< LevelProxy, Levels >(levels, LevelProxy{}) {}
+template< std::ranges::range Levels > struct LevelColumnsView : LevelColumnsViewBase< LevelProxy< Levels >, Levels > {
+	LevelColumnsView(Levels &levels)
+		: LevelColumnsViewBase< LevelProxy< Levels >, Levels >(levels, LevelProxy< Levels >{}) {}
 };
 
 
