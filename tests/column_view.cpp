@@ -22,6 +22,7 @@ TEST(TPack, ColViewTest_compare) {
 	std::vector< std::vector< std::size_t > > levels = { { 0, 1 }, { 1, 0 } };
 	LevelColumnsView view(levels);
 
+	// Comparison between ColRef instanes
 	ASSERT_GT(view[0], view[1]);
 	ASSERT_GE(view[0], view[1]);
 	ASSERT_LT(view[1], view[0]);
@@ -30,6 +31,37 @@ TEST(TPack, ColViewTest_compare) {
 	ASSERT_GE(view[0], view[0]);
 	ASSERT_EQ(view[0], view[0]);
 	ASSERT_NE(view[0], view[1]);
+
+	using CVal = std::remove_cvref_t< decltype(view) >::ColVal;
+
+	// Comparison between ColVal instances
+	ASSERT_GT(static_cast< CVal >(view[0]), static_cast< CVal >(view[1]));
+	ASSERT_GE(static_cast< CVal >(view[0]), static_cast< CVal >(view[1]));
+	ASSERT_LT(static_cast< CVal >(view[1]), static_cast< CVal >(view[0]));
+	ASSERT_LE(static_cast< CVal >(view[1]), static_cast< CVal >(view[0]));
+	ASSERT_LE(static_cast< CVal >(view[0]), static_cast< CVal >(view[0]));
+	ASSERT_GE(static_cast< CVal >(view[0]), static_cast< CVal >(view[0]));
+	ASSERT_EQ(static_cast< CVal >(view[0]), static_cast< CVal >(view[0]));
+	ASSERT_NE(static_cast< CVal >(view[0]), static_cast< CVal >(view[1]));
+
+	// Mixed comparison between ColVal and ColRef instances
+	ASSERT_GT(view[0], static_cast< CVal >(view[1]));
+	ASSERT_GE(view[0], static_cast< CVal >(view[1]));
+	ASSERT_LT(view[1], static_cast< CVal >(view[0]));
+	ASSERT_LE(view[1], static_cast< CVal >(view[0]));
+	ASSERT_LE(view[0], static_cast< CVal >(view[0]));
+	ASSERT_GE(view[0], static_cast< CVal >(view[0]));
+	ASSERT_EQ(view[0], static_cast< CVal >(view[0]));
+	ASSERT_NE(view[0], static_cast< CVal >(view[1]));
+
+	ASSERT_GT(static_cast< CVal >(view[0]), view[1]);
+	ASSERT_GE(static_cast< CVal >(view[0]), view[1]);
+	ASSERT_LT(static_cast< CVal >(view[1]), view[0]);
+	ASSERT_LE(static_cast< CVal >(view[1]), view[0]);
+	ASSERT_LE(static_cast< CVal >(view[0]), view[0]);
+	ASSERT_GE(static_cast< CVal >(view[0]), view[0]);
+	ASSERT_EQ(static_cast< CVal >(view[0]), view[0]);
+	ASSERT_NE(static_cast< CVal >(view[0]), view[1]);
 }
 
 TEST_P(ColViewTest, sort) {

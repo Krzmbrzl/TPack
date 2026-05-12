@@ -18,8 +18,21 @@ public:
 	struct ColVal {
 		std::vector< typename Proxy::value_type > values;
 
-		friend auto operator<=>(const ColVal &lhs, const ColVal &rhs) = default;
-		friend bool operator==(const ColVal &lhs, const ColVal &rhs)  = default;
+		friend constexpr auto operator<=>(const ColVal &lhs, const ColVal &rhs) {
+			const std::size_t size = lhs.values.size();
+
+			// Need to compare in reverse order to stay consistent with ColRef impl
+			for (std::size_t i = 0; i < size; ++i) {
+				if (lhs.values[size - i - 1] != rhs.values[size - i - 1]) {
+					return lhs.values[size - i - 1] <=> rhs.values[size - i - 1];
+				}
+			}
+
+			return decltype(std::declval< typename Proxy::value_type >()
+							<=> std::declval< typename Proxy::value_type >())::equivalent;
+		}
+
+		friend constexpr bool operator==(const ColVal &lhs, const ColVal &rhs) = default;
 	};
 	static_assert(std::totally_ordered< ColVal >);
 	struct ColRef {
@@ -105,13 +118,13 @@ public:
 							<=> std::declval< typename Proxy::value_type >())::equivalent;
 		}
 		friend constexpr auto operator<=>(const ColVal &lhs, const ColRef &rhs) {
-			std::size_t i = 0;
+			std::size_t i = lhs.values.size() - 1;
 			for (auto &level : std::ranges::views::reverse(rhs.m_col_view.m_levels)) {
 				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
 				if (lhs.values[i] != rhs_val) {
 					return lhs.values[i] <=> rhs_val;
 				}
-				++i;
+				--i;
 			}
 
 			return decltype(std::declval< typename Proxy::value_type >()
