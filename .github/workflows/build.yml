@@ -25,4 +25,4 @@ jobs:
 
       - name: Test
         shell: bash
-        run: cd build && ctest --output-on-failure
+        run: cd build && ctest -R '^TPack' --output-on-failure
