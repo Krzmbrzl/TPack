@@ -22,7 +22,7 @@ namespace details {
 		for (auto &&part_levels : partitions) {
 			// Sort levels such that the one containing the smallest index comes first
 			std::ranges::sort(part_levels, cmp_less{},
-							  [](const auto &level) { return std::ranges::min_element(level, cmp_less{}); });
+							  [](const auto &level) { return *std::ranges::min_element(level, cmp_less{}); });
 
 			// Bring level columns into descending order
 			details::LevelColumnsView columns(part_levels);
