@@ -26,3 +26,11 @@ jobs:
       - name: Test
         shell: bash
         run: cd build && ctest -R '^TPack' --output-on-failure
+
+      - name: Install
+        shell: bash
+        run: cd build && cmake -DCMAKE_INSTALL_PREFIX=~/tpack --build -t install
+
+      - name: Consume Installed
+        shell: bash
+        run: cd example && mkdir build && cd build && cmake -DCMAKE_PREFIX_PATH=~/tpack .. && cmake --build .
