@@ -15,6 +15,7 @@ namespace tpack::details {
 template< typename Proxy, std::ranges::range Levels > class LevelColumnsViewBase {
 public:
 	// See also https://artificial-mind.net/blog/2020/11/28/std-sort-multiple-ranges
+	friend struct ColVal;
 	struct ColVal {
 		std::vector< typename Proxy::value_type > values;
 
@@ -35,6 +36,8 @@ public:
 		friend constexpr bool operator==(const ColVal &lhs, const ColVal &rhs) = default;
 	};
 	static_assert(std::totally_ordered< ColVal >);
+
+	friend struct ColRef;
 	struct ColRef {
 		constexpr ColRef(std::size_t col, LevelColumnsViewBase &view) : m_col(col), m_col_view(view) {}
 
@@ -142,7 +145,7 @@ public:
 		LevelColumnsViewBase &m_col_view;
 	};
 
-
+	friend struct ColIter;
 	struct ColIter {
 		using difference_type   = std::ptrdiff_t;
 		using value_type        = ColVal;
