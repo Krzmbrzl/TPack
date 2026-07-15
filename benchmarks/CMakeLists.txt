@@ -18,5 +18,6 @@ add_executable(tensor_packing_benchmarks
 	"orbit.cpp"
 	"rank.cpp"
 )
+set_target_properties(tensor_packing_benchmarks PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 
 target_link_libraries(tensor_packing_benchmarks PRIVATE tensor_packing benchmark::benchmark)
