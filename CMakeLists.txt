@@ -20,6 +20,7 @@ target_sources(tensor_packing
 )
 
 add_library(TPack::TPack ALIAS tensor_packing)
+set_target_properties(tensor_packing PROPERTIES EXPORT_NAME "TPack")
 
 if (PROJECT_IS_TOP_LEVEL)
 	include(CheckCXXCompilerFlag)
