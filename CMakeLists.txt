@@ -26,11 +26,12 @@ set_target_properties(tensor_packing PROPERTIES EXPORT_NAME "TPack")
 if (PROJECT_IS_TOP_LEVEL)
 	include(CheckCXXCompilerFlag)
 
-	check_cxx_compiler_flag("-Wall;-Wextra;-Wpedantic" SUPPORTS_WARNING_FLAGS)
+	check_cxx_compiler_flag("-Wall;-Wextra;-Wpedantic;-Wconversion" SUPPORTS_WARNING_FLAGS)
 	check_cxx_compiler_flag("-Werror" SUPPORTS_WAE_FLAG)
 
 	if (SUPPORTS_WARNING_FLAGS)
-		target_compile_options(tensor_packing INTERFACE "$<BUILD_INTERFACE:-Wall>" "$<BUILD_INTERFACE:-Wextra>" "$<BUILD_INTERFACE:-Wpedantic>")
+		target_compile_options(tensor_packing INTERFACE "$<BUILD_INTERFACE:-Wall>" "$<BUILD_INTERFACE:-Wextra>" "$<BUILD_INTERFACE:-Wpedantic>"
+			"$<BUILD_INTERFACE:-Wconversion>")
 	endif()
 	if (SUPPORTS_WAE_FLAG)
 		target_compile_options(tensor_packing INTERFACE "$<BUILD_INTERFACE:-Werror>")
