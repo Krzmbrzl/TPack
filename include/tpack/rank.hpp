@@ -172,7 +172,7 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 			if (it != end(generator)) {
 				static_assert(std::sized_sentinel_for< decltype(it), decltype(begin(generator)) >,
 							  "Distance computation not possible in O(1)");
-				n = max_n - std::ranges::distance(begin(generator), it);
+				n = max_n - static_cast< std::size_t >(std::ranges::distance(begin(generator), it));
 			}
 
 			assert(num_combinations <= current_rank);

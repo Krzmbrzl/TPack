@@ -22,12 +22,12 @@ TEST(TPack, PartitionTest_consistency) {
 	std::size_t total_dim                 = std::accumulate(dims.begin(), dims.end(), 1, std::multiplies<>{});
 
 	auto to_flat_idx = [&dims](std::size_t i, std::size_t j, std::size_t k, std::size_t l, std::size_t m, std::size_t n,
-							   std::size_t o) {
+							   std::size_t o) -> std::size_t {
 		return i + dims[0] * j + std::accumulate(dims.begin(), dims.begin() + 2, 1, std::multiplies<>{}) * k
-			   + std::accumulate(dims.begin(), dims.begin() + 3, 1, std::multiplies<>{}) * l
-			   + std::accumulate(dims.begin(), dims.begin() + 4, 1, std::multiplies<>{}) * m
-			   + std::accumulate(dims.begin(), dims.begin() + 5, 1, std::multiplies<>{}) * n
-			   + std::accumulate(dims.begin(), dims.begin() + 6, 1, std::multiplies<>{}) * o;
+			   + std::accumulate(dims.begin(), dims.begin() + 3, std::size_t(1), std::multiplies<>{}) * l
+			   + std::accumulate(dims.begin(), dims.begin() + 4, std::size_t(1), std::multiplies<>{}) * m
+			   + std::accumulate(dims.begin(), dims.begin() + 5, std::size_t(1), std::multiplies<>{}) * n
+			   + std::accumulate(dims.begin(), dims.begin() + 6, std::size_t(1), std::multiplies<>{}) * o;
 	};
 
 	std::vector< int > data(total_dim, 0);

@@ -30,7 +30,7 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 	for (auto &&part : partitions) {
 		// Effective (combined) dimension of the tuple of indices making up the current partition
 		const std::size_t effective_dim =
-			std::accumulate(begin(part), end(part), 1,
+			std::accumulate(begin(part), end(part), std::size_t(1),
 							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
 		const std::size_t part_size = size(*begin(part));
 
