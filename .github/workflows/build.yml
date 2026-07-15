@@ -17,6 +17,8 @@ jobs:
 
       - if: startswith(matrix.os, 'windows')
         uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
 
       - name: Configure
         shell: bash
