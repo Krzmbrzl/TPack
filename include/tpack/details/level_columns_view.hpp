@@ -43,14 +43,14 @@ public:
 
 		constexpr ColRef &operator=(ColRef &&other) {
 			for (auto &level : m_col_view.levels()) {
-				level[m_col] = std::move(m_col_view.m_proxy[level[other.m_col]]);
+				level[m_col] = std::move(m_col_view.proxy()[level[other.m_col]]);
 			}
 
 			return *this;
 		}
 		constexpr ColRef &operator=(ColRef &&other) const {
 			for (auto &level : m_col_view.levels()) {
-				level[m_col] = std::move(m_col_view.m_proxy[level[other.m_col]]);
+				level[m_col] = std::move(m_col_view.proxy()[level[other.m_col]]);
 			}
 
 			return *this;
@@ -59,7 +59,7 @@ public:
 		constexpr ColRef &operator=(ColVal &&val) {
 			std::size_t i = 0;
 			for (auto &level : m_col_view.levels()) {
-				m_col_view.m_proxy[level[m_col]] = std::move(val.values[i]);
+				m_col_view.proxy()[level[m_col]] = std::move(val.values[i]);
 				++i;
 			}
 
@@ -68,7 +68,7 @@ public:
 		constexpr ColRef &operator=(ColVal &&val) const {
 			std::size_t i = 0;
 			for (const auto &level : m_col_view.levels()) {
-				m_col_view.m_proxy[level[m_col]] = std::move(val.values[i]);
+				m_col_view.proxy()[level[m_col]] = std::move(val.values[i]);
 				++i;
 			}
 
@@ -82,7 +82,7 @@ public:
 			val.values.reserve(size(m_col_view.levels()));
 
 			for (const auto &level : m_col_view.levels()) {
-				val.values.emplace_back(std::move(m_col_view.m_proxy[level[m_col]]));
+				val.values.emplace_back(std::move(m_col_view.proxy()[level[m_col]]));
 			}
 
 			return val;
@@ -95,7 +95,7 @@ public:
 			val.values.reserve(size(m_col_view.levels()));
 
 			for (const auto &level : m_col_view.levels()) {
-				val.values.emplace_back(std::move(m_col_view.m_proxy[level[m_col]]));
+				val.values.emplace_back(std::move(m_col_view.proxy()[level[m_col]]));
 			}
 
 			return val;
@@ -104,14 +104,14 @@ public:
 		friend constexpr void swap(ColRef lhs, ColRef rhs) {
 			using std::swap;
 			for (auto &level : lhs.m_col_view.levels()) {
-				swap(lhs.m_col_view.m_proxy[level[lhs.m_col]], rhs.m_col_view.m_proxy[level[rhs.m_col]]);
+				swap(lhs.m_col_view.proxy()[level[lhs.m_col]], rhs.m_col_view.proxy()[level[rhs.m_col]]);
 			}
 		}
 
 		friend constexpr auto operator<=>(const ColRef &lhs, const ColRef &rhs) {
 			for (const auto &level : std::ranges::views::reverse(lhs.m_col_view.levels())) {
-				const auto &lhs_val = lhs.m_col_view.m_proxy[level[lhs.m_col]];
-				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
+				const auto &lhs_val = lhs.m_col_view.proxy()[level[lhs.m_col]];
+				const auto &rhs_val = rhs.m_col_view.proxy()[level[rhs.m_col]];
 				if (lhs_val != rhs_val) {
 					return lhs_val <=> rhs_val;
 				}
@@ -123,7 +123,7 @@ public:
 		friend constexpr auto operator<=>(const ColVal &lhs, const ColRef &rhs) {
 			std::size_t i = lhs.values.size() - 1;
 			for (const auto &level : std::ranges::views::reverse(rhs.m_col_view.levels())) {
-				const auto &rhs_val = rhs.m_col_view.m_proxy[level[rhs.m_col]];
+				const auto &rhs_val = rhs.m_col_view.proxy()[level[rhs.m_col]];
 				if (lhs.values[i] != rhs_val) {
 					return lhs.values[i] <=> rhs_val;
 				}
@@ -227,8 +227,10 @@ public:
 	constexpr ColRef operator[](std::size_t col) { return { col, *this }; }
 
 	constexpr Levels &levels() { return m_levels; }
-
 	constexpr const Levels &levels() const { return m_levels; }
+
+	constexpr Proxy &proxy() { return m_proxy; }
+	constexpr const Proxy &proxy() const { return m_proxy; }
 
 private:
 	Levels &m_levels;
