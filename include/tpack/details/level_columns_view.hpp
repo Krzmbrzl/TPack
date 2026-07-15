@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <compare>
 #include <concepts>
 #include <cstddef>
@@ -158,15 +159,29 @@ public:
 
 		constexpr std::strong_ordering operator<=>(const ColIter &other) const { return m_col <=> other.m_col; }
 
-		constexpr difference_type operator-(const ColIter &other) const { return m_col - other.m_col; }
-		constexpr difference_type operator+(const ColIter &other) const { return m_col + other.m_col; }
+		constexpr difference_type operator-(const ColIter &other) const {
+			return static_cast< difference_type >(m_col - other.m_col);
+		}
+		constexpr difference_type operator+(const ColIter &other) const {
+			return static_cast< difference_type >(m_col + other.m_col);
+		}
 
 		constexpr ColIter &operator+=(difference_type amount) {
-			m_col += amount;
+			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
+			if (amount >= 0) {
+				m_col += static_cast< std::size_t >(amount);
+			} else {
+				m_col -= static_cast< std::size_t >(-amount);
+			}
 			return *this;
 		}
 		constexpr ColIter &operator-=(difference_type amount) {
-			m_col -= amount;
+			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
+			if (amount >= 0) {
+				m_col -= static_cast< std::size_t >(amount);
+			} else {
+				m_col += static_cast< std::size_t >(-amount);
+			}
 			return *this;
 		}
 		friend constexpr ColIter operator+(const ColIter &iter, difference_type amount) {

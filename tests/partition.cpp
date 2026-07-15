@@ -19,11 +19,12 @@ namespace tpack::tests {
 TEST(TPack, PartitionTest_consistency) {
 	const util::PartitionList partitions  = { { { 0, 1 } }, { { 2, 3 }, { 4, 5 } }, { { 6 } } };
 	const std::vector< std::size_t > dims = { 3, 3, 2, 2, 4, 4, 5 };
-	std::size_t total_dim                 = std::accumulate(dims.begin(), dims.end(), 1, std::multiplies<>{});
+	std::size_t total_dim = std::accumulate(dims.begin(), dims.end(), std::size_t(1), std::multiplies<>{});
 
 	auto to_flat_idx = [&dims](std::size_t i, std::size_t j, std::size_t k, std::size_t l, std::size_t m, std::size_t n,
 							   std::size_t o) -> std::size_t {
-		return i + dims[0] * j + std::accumulate(dims.begin(), dims.begin() + 2, 1, std::multiplies<>{}) * k
+		return i + dims[0] * j
+			   + std::accumulate(dims.begin(), dims.begin() + 2, std::size_t(1), std::multiplies<>{}) * k
 			   + std::accumulate(dims.begin(), dims.begin() + 3, std::size_t(1), std::multiplies<>{}) * l
 			   + std::accumulate(dims.begin(), dims.begin() + 4, std::size_t(1), std::multiplies<>{}) * m
 			   + std::accumulate(dims.begin(), dims.begin() + 5, std::size_t(1), std::multiplies<>{}) * n
@@ -39,8 +40,8 @@ TEST(TPack, PartitionTest_consistency) {
 		do {
 			int &val = data.at(
 				to_flat_idx(indexing[0], indexing[1], indexing[2], indexing[3], indexing[4], indexing[5], indexing[6]));
-			ASSERT_EQ(val, 0);
-			val = val_counter;
+			ASSERT_EQ(val, static_cast< int >(0));
+			val = static_cast< int >(val_counter);
 		} while (next_orbit_representative(indexing, partitions));
 
 		val_counter++;
