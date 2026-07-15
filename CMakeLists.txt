@@ -7,6 +7,7 @@ project(TensorPacking
 
 add_library(tensor_packing INTERFACE)
 target_compile_features(tensor_packing INTERFACE cxx_std_20)
+set_target_properties(tensor_packing PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 
 target_sources(tensor_packing
 	PUBLIC FILE_SET tpack_header TYPE HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/include"
