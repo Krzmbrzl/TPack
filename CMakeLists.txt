@@ -29,10 +29,10 @@ if (PROJECT_IS_TOP_LEVEL)
 	check_cxx_compiler_flag("-Werror" SUPPORTS_WAE_FLAG)
 
 	if (SUPPORTS_WARNING_FLAGS)
-		target_compile_options(tensor_packing INTERFACE "-Wall" "-Wextra" "-Wpedantic")
+		target_compile_options(tensor_packing INTERFACE "$<BUILD_INTERFACE:-Wall>" "$<BUILD_INTERFACE:-Wextra>" "$<BUILD_INTERFACE:-Wpedantic>")
 	endif()
 	if (SUPPORTS_WAE_FLAG)
-		target_compile_options(tensor_packing INTERFACE "-Werror")
+		target_compile_options(tensor_packing INTERFACE "$<BUILD_INTERFACE:-Werror>")
 	endif()
 
 	set(ENABLE_BENCHMARKS_DEFAULT ON)
