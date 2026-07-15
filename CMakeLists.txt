@@ -42,6 +42,7 @@ endif()
 
 option(TPACK_ENABLE_TESTING "Whether to build tests" ON)
 option(TPACK_ENABLE_BENCHMARKS "Whether to build benchmarks" ${ENABLE_BENCHMARKS_DEFAULT})
+option(TPACK_INSTALL "Whether to configure an install target for TPack" ON)
 
 if (TPACK_ENABLE_TESTING)
 	include(CTest)
@@ -52,37 +53,37 @@ if (TPACK_ENABLE_BENCHMARKS)
 	add_subdirectory(benchmarks)
 endif()
 
-include(GNUInstallDirs)
+if (TPACK_INSTALL)
+	include(GNUInstallDirs)
 
+	install(
+		TARGETS tensor_packing
+		EXPORT TPackTargets
+		FILE_SET tpack_header DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+		  COMPONENT tpack_dev
+	)
+	# Generate and install a targets file
+	install(
+		EXPORT TPackTargets
+		DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
+		FILE TPackTargets.cmake
+		NAMESPACE TPack::
+		COMPONENT tpack_dev
+	)
 
-install(
-	TARGETS tensor_packing
-	EXPORT TPackTargets
-	FILE_SET tpack_header DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-	  COMPONENT tpack_dev
-)
-# Generate and install a targets file
-install(
-	EXPORT TPackTargets
-	DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
-	FILE TPackTargets.cmake
-	NAMESPACE TPack::
-	COMPONENT tpack_dev
-)
+	include(CMakePackageConfigHelpers)
+	configure_package_config_file("tpack-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+		INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
+	)
+	write_basic_package_version_file(tpack-config-version.cmake
+	  VERSION ${PROJECT_VERSION}
+	  COMPATIBILITY SameMajorVersion
+	)
+	install(
+	  FILES
+		"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+		"${CMAKE_CURRENT_BINARY_DIR}/tpack-config-version.cmake"
+		DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
+	)
 
-include(CMakePackageConfigHelpers)
-configure_package_config_file("tpack-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
-	INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
-)
-write_basic_package_version_file(tpack-config-version.cmake
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-install(
-  FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/tpack-config-version.cmake"
-	DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
-)
-
-#install(EXPORT tensor_packing_export DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+endif()
