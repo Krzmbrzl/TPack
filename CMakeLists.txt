@@ -53,6 +53,18 @@ if (TPACK_ENABLE_BENCHMARKS)
 	add_subdirectory(benchmarks)
 endif()
 
+
+export(TARGETS tensor_packing NAMESPACE TPack:: FILE TPackTargets.cmake)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file("tpack-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+	INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
+)
+write_basic_package_version_file(tpack-config-version.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+
 if (TPACK_INSTALL)
 	include(GNUInstallDirs)
 
@@ -62,7 +74,9 @@ if (TPACK_INSTALL)
 		FILE_SET tpack_header DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 		  COMPONENT tpack_dev
 	)
-	# Generate and install a targets file
+
+	# Generate and install a targets file (basically the same we created via export(…) in the
+	# build tree but for the install tree
 	install(
 		EXPORT TPackTargets
 		DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
@@ -71,19 +85,10 @@ if (TPACK_INSTALL)
 		COMPONENT tpack_dev
 	)
 
-	include(CMakePackageConfigHelpers)
-	configure_package_config_file("tpack-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
-		INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
-	)
-	write_basic_package_version_file(tpack-config-version.cmake
-	  VERSION ${PROJECT_VERSION}
-	  COMPATIBILITY SameMajorVersion
-	)
 	install(
 	  FILES
 		"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
 		"${CMAKE_CURRENT_BINARY_DIR}/tpack-config-version.cmake"
 		DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tpack-${PROJECT_VERSION}"
 	)
-
 endif()
