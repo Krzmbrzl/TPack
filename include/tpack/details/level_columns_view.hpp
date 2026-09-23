@@ -83,7 +83,7 @@ public:
 			val.values.reserve(size(m_col_view.levels()));
 
 			for (const auto &level : m_col_view.levels()) {
-				val.values.emplace_back(std::move(m_col_view.proxy()[level[m_col]]));
+				val.values.emplace_back(m_col_view.proxy()[level[m_col]]);
 			}
 
 			return val;

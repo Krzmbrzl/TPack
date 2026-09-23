@@ -3,6 +3,7 @@
 #include <tpack/details/level_columns_view.hpp>
 
 #include <algorithm>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -76,6 +77,19 @@ TEST(TPack, ColViewTest_sort_indexing) {
 	const std::vector< std::size_t > expected = { 2, 1, 0, 3, 4, 5 };
 	EXPECT_EQ(indexing, expected);
 	EXPECT_EQ(levels, orig_levels);
+}
+
+TEST(TPack, ColViewTest_convert_lvalue) {
+	std::vector< std::vector< std::size_t > > levels = { { 0, 1 } };
+	std::vector< std::string > indexing              = { "first", "second" };
+	LevelColumnsIndexingView view(levels, indexing);
+
+	const auto ref                                          = view[0];
+	const std::remove_cvref_t< decltype(view) >::ColVal val = ref;
+
+	// Converting an lvalue must not modify the referenced values
+	EXPECT_EQ(val.values, std::vector< std::string >{ "first" });
+	EXPECT_EQ(indexing[0], "first");
 }
 
 TEST_P(ColViewTest, sort) {
