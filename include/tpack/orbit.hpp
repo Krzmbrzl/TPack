@@ -79,19 +79,19 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Cou
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
 	using std::ranges::begin;
-	using std::ranges::end;
+	using std::ranges::size;
 
 	for (auto &&part_levels : partitions) {
-		for (auto &&level : std::ranges::views::reverse(part_levels)) {
-			auto prev_idx_it = begin(level);
-			auto curr_idx_it = prev_idx_it;
-			std::ranges::advance(curr_idx_it, 1);
-			for (; curr_idx_it != end(level); ++curr_idx_it, ++prev_idx_it) {
-				if (indexing[*prev_idx_it] < indexing[*curr_idx_it]) {
+		const std::size_t num_cols = size(*begin(part_levels));
+
+		// Columns (compared in reverse lexicographic order) have to be non-increasing
+		for (std::size_t col = 1; col < num_cols; ++col) {
+			for (auto &&level : std::ranges::views::reverse(part_levels)) {
+				if (indexing[level[col - 1]] < indexing[level[col]]) {
 					return false;
 				}
-				if (indexing[*prev_idx_it] > indexing[*curr_idx_it]) {
-					return true;
+				if (indexing[level[col - 1]] > indexing[level[col]]) {
+					break;
 				}
 			}
 		}

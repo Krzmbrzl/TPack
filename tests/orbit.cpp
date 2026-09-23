@@ -80,6 +80,8 @@ INSTANTIATE_TEST_SUITE_P(
 		OrbitTest::param_tuple({ 0, 1 }, util::make_info_l({ 3, 3 }, { 0, 1 }), false),
 		OrbitTest::param_tuple({ 1, 0 }, util::make_info_l({ 3, 3 }, { 1, 0 }), false),
 		OrbitTest::param_tuple({ 0, 1 }, util::make_info_l({ 3, 3 }, { 1, 0 }), true),
+		// All pairs have to be checked, not only the first one that differs
+		OrbitTest::param_tuple({ 2, 0, 1 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), false),
 		// If we have multiple levels, we effectively have a partition of l-tuples where l is
 		// the number of levels. We still require those l-tuples to be non-ascending. l-tuples
 		// are compared in reverse lexicographic order.
@@ -94,7 +96,8 @@ INSTANTIATE_TEST_SUITE_P(
 		// In case of multiple partitions, they have to be canonical individually without any defined order between them
 		OrbitTest::param_tuple({ 1, 0, 0 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
 		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
-		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false)
+		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false),
+		OrbitTest::param_tuple({ 1, 0, 0, 1 }, util::make_info({ 3, 3, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }), false)
 	)
 );
 // clang-format on
