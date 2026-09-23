@@ -20,7 +20,8 @@ namespace details {
 		using cmp_greater = std::conditional_t< col_major, std::greater<>, std::less<> >;
 
 		for (auto &&part_levels : partitions) {
-			// Sort levels such that the one containing the smallest index comes first
+			// Sort levels such that the one containing the smallest (col-major) or largest (row-major) index
+			// comes first
 			std::ranges::sort(part_levels, cmp_less{},
 							  [](const auto &level) { return *std::ranges::min_element(level, cmp_less{}); });
 
@@ -29,7 +30,10 @@ namespace details {
 			std::ranges::sort(columns, cmp_greater{});
 		}
 
-		std::ranges::sort(partitions, cmp_less{}, [](const auto &part_levels) { return *begin(*begin(part_levels)); });
+		// The first level of every partition contains the partition's extremal index
+		std::ranges::sort(partitions, cmp_less{}, [](const auto &part_levels) {
+			return *std::ranges::min_element(*begin(part_levels), cmp_less{});
+		});
 	}
 
 } // namespace details

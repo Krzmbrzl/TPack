@@ -24,6 +24,8 @@ TEST_P(BinomialTest, binomial) {
 INSTANTIATE_TEST_SUITE_P(
 	TPack, BinomialTest,
 	testing::Values(
+		std::make_tuple(0, 0, 1),
+		std::make_tuple(5, 0, 1),
 		std::make_tuple(1, 1, 1),
 		std::make_tuple(4, 2, 6),
 		std::make_tuple(8, 8, 1),

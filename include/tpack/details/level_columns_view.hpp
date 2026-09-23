@@ -44,14 +44,14 @@ public:
 
 		constexpr ColRef &operator=(ColRef &&other) {
 			for (auto &level : m_col_view.levels()) {
-				level[m_col] = std::move(m_col_view.proxy()[level[other.m_col]]);
+				m_col_view.proxy()[level[m_col]] = std::move(m_col_view.proxy()[level[other.m_col]]);
 			}
 
 			return *this;
 		}
-		constexpr ColRef &operator=(ColRef &&other) const {
+		constexpr const ColRef &operator=(ColRef &&other) const {
 			for (auto &level : m_col_view.levels()) {
-				level[m_col] = std::move(m_col_view.proxy()[level[other.m_col]]);
+				m_col_view.proxy()[level[m_col]] = std::move(m_col_view.proxy()[level[other.m_col]]);
 			}
 
 			return *this;
@@ -66,7 +66,7 @@ public:
 
 			return *this;
 		}
-		constexpr ColRef &operator=(ColVal &&val) const {
+		constexpr const ColRef &operator=(ColVal &&val) const {
 			std::size_t i = 0;
 			for (const auto &level : m_col_view.levels()) {
 				m_col_view.proxy()[level[m_col]] = std::move(val.values[i]);
@@ -83,7 +83,7 @@ public:
 			val.values.reserve(size(m_col_view.levels()));
 
 			for (const auto &level : m_col_view.levels()) {
-				val.values.emplace_back(std::move(m_col_view.proxy()[level[m_col]]));
+				val.values.emplace_back(m_col_view.proxy()[level[m_col]]);
 			}
 
 			return val;
@@ -162,12 +162,9 @@ public:
 		constexpr difference_type operator-(const ColIter &other) const {
 			return static_cast< difference_type >(m_col - other.m_col);
 		}
-		constexpr difference_type operator+(const ColIter &other) const {
-			return static_cast< difference_type >(m_col + other.m_col);
-		}
 
 		constexpr ColIter &operator+=(difference_type amount) {
-			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
+			assert(amount >= 0 || static_cast< std::size_t >(-amount) <= m_col);
 			if (amount >= 0) {
 				m_col += static_cast< std::size_t >(amount);
 			} else {
@@ -176,7 +173,7 @@ public:
 			return *this;
 		}
 		constexpr ColIter &operator-=(difference_type amount) {
-			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
+			assert(amount <= 0 || static_cast< std::size_t >(amount) <= m_col);
 			if (amount >= 0) {
 				m_col -= static_cast< std::size_t >(amount);
 			} else {
@@ -195,7 +192,6 @@ public:
 			copy -= amount;
 			return copy;
 		}
-		friend constexpr ColIter operator-(difference_type amount, const ColIter &iter) { return iter - amount; }
 
 		constexpr ColIter &operator++() { return *this += 1; }
 		constexpr ColIter operator++(int) {

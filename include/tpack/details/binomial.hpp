@@ -15,7 +15,7 @@ namespace tpack::details {
 constexpr std::size_t binomial(std::size_t n, std::size_t k) {
 	assert(n >= k);
 
-	if (n == k) {
+	if (k == 0 || n == k) {
 		return 1;
 	}
 
