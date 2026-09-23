@@ -26,6 +26,8 @@ TEST_P(OrbitCountTest, num_orbits) {
 INSTANTIATE_TEST_SUITE_P(
 	TPack, OrbitCountTest,
 	testing::Values(
+		// Scalar
+		std::make_tuple(util::make_info({}, {}), 1),
 		std::make_tuple(util::make_info_l({ 5 }, { 0 }), 5),
 		std::make_tuple(util::make_info({ 5, 5 }, { { { 0 }, { 1 } } }), 25),
 		std::make_tuple(util::make_info_l({ 5, 5 }, { 0, 1 }), 15),

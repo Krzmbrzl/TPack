@@ -21,10 +21,6 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 	using std::ranges::end;
 	using std::ranges::size;
 
-	if (std::ranges::empty(dims)) {
-		return 0;
-	}
-
 	std::size_t num = 1;
 
 	for (auto &&part : partitions) {
