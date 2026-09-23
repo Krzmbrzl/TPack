@@ -160,16 +160,13 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 								   return details::binomial(val + num_cols - col - 1, num_cols - col);
 							   });
 
-			std::size_t num_combinations = 0;
-			auto it = std::ranges::partition_point(generator, [&num_combinations, current_rank](std::size_t val) {
-				if (val <= current_rank) {
-					num_combinations = val;
-				}
-				return val > current_rank;
-			});
+			auto it =
+				std::ranges::partition_point(generator, [current_rank](std::size_t val) { return val > current_rank; });
 
-			std::size_t n = 0;
+			std::size_t num_combinations = 0;
+			std::size_t n                = 0;
 			if (it != end(generator)) {
+				num_combinations = *it;
 				static_assert(std::sized_sentinel_for< decltype(it), decltype(begin(generator)) >,
 							  "Distance computation not possible in O(1)");
 				n = max_n - static_cast< std::size_t >(std::ranges::distance(begin(generator), it));
