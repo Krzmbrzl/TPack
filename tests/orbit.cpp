@@ -32,7 +32,9 @@ INSTANTIATE_TEST_SUITE_P(
 		std::make_tuple(util::make_info({ 5, 5, 7 }, { { { 0, 1 } }, { { 2 } } }), 105),
 		std::make_tuple(util::make_info_l({ 5, 5, 5 }, { 0, 1, 2 }), 35),
 		std::make_tuple(util::make_info_p({ 7, 7, 7, 7 }, { { 0, 1 }, { 2, 3 } }), 1225),
-		std::make_tuple(util::make_info({ 5, 5, 5, 8, 8, 10, 10, 3 }, { { { 0, 1, 2 } }, { { 3, 4 }, { 5, 6 } }, { { 7 } } }), 340200)
+		std::make_tuple(util::make_info({ 5, 5, 5, 8, 8, 10, 10, 3 }, { { { 0, 1, 2 } }, { { 3, 4 }, { 5, 6 } }, { { 7 } } }), 340200),
+		// Effective dimension exceeding the range of int
+		std::make_tuple(util::make_info_p({ 65536, 65536 }, { { 0 }, { 1 } }), 4294967296)
 	)
 );
 // clang-format on
