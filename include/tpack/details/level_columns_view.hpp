@@ -164,7 +164,7 @@ public:
 		}
 
 		constexpr ColIter &operator+=(difference_type amount) {
-			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
+			assert(amount >= 0 || static_cast< std::size_t >(-amount) <= m_col);
 			if (amount >= 0) {
 				m_col += static_cast< std::size_t >(amount);
 			} else {
@@ -173,7 +173,7 @@ public:
 			return *this;
 		}
 		constexpr ColIter &operator-=(difference_type amount) {
-			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
+			assert(amount <= 0 || static_cast< std::size_t >(amount) <= m_col);
 			if (amount >= 0) {
 				m_col -= static_cast< std::size_t >(amount);
 			} else {

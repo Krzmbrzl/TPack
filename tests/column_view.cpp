@@ -92,6 +92,21 @@ TEST(TPack, ColViewTest_convert_lvalue) {
 	EXPECT_EQ(indexing[0], "first");
 }
 
+TEST(TPack, ColViewTest_iterator_arithmetic) {
+	std::vector< std::vector< std::size_t > > levels = { { 0, 1, 2, 3 } };
+	LevelColumnsView view(levels);
+
+	auto it = view.begin() + 3;
+	it += -1;
+	EXPECT_EQ(it - view.begin(), 2);
+	it -= 1;
+	EXPECT_EQ(it - view.begin(), 1);
+	it -= -2;
+	EXPECT_EQ(it - view.begin(), 3);
+	it += -3;
+	EXPECT_EQ(it, view.begin());
+}
+
 TEST_P(ColViewTest, sort) {
 	auto [actual, expected] = GetParam();
 	LevelColumnsView view(actual);
