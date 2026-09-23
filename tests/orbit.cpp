@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <tuple>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -100,6 +101,73 @@ INSTANTIATE_TEST_SUITE_P(
 		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
 		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false),
 		OrbitTest::param_tuple({ 1, 0, 0, 1 }, util::make_info({ 3, 3, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }), false)
+	)
+);
+// clang-format on
+
+struct OrbitTranspositionTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::TensorInfo > > {
+	using param_tuple = std::tuple< std::vector< std::size_t >, util::TensorInfo >;
+};
+
+// Number of column pairs of the given partition that are in ascending order, i.e. the number of
+// transpositions (of adjacent columns) that separate the current state from the canonical one.
+std::size_t num_inversions(const std::vector< std::size_t > &indexing, const util::Partition &partition) {
+	auto column = [&](std::size_t col) {
+		std::vector< std::size_t > values;
+		// Reverse lexicographic comparison -> last level is the most significant one
+		for (auto it = partition.rbegin(); it != partition.rend(); ++it) {
+			values.push_back(indexing[(*it)[col]]);
+		}
+		return values;
+	};
+
+	std::size_t count = 0;
+	for (std::size_t i = 0; i < partition.front().size(); ++i) {
+		for (std::size_t j = i + 1; j < partition.front().size(); ++j) {
+			if (column(i) < column(j)) {
+				++count;
+			}
+		}
+	}
+
+	return count;
+}
+
+TEST_P(OrbitTranspositionTest, next_orbit_representative) {
+	auto [indexing, info] = GetParam();
+	ASSERT_TRUE(is_canonical(indexing, info.partitions));
+
+	std::vector< std::size_t > num_transpositions(info.partitions.size(), 0);
+
+	bool has_more = false;
+	do {
+		has_more = next_orbit_representative(indexing, info.partitions, &num_transpositions);
+
+		for (std::size_t i = 0; i < info.partitions.size(); ++i) {
+			EXPECT_EQ(num_transpositions[i], num_inversions(indexing, info.partitions[i])) << "partition " << i;
+		}
+	} while (has_more);
+
+	EXPECT_TRUE(is_canonical(indexing, info.partitions));
+	for (std::size_t count : num_transpositions) {
+		EXPECT_EQ(count, 0);
+	}
+}
+
+// clang-format off
+INSTANTIATE_TEST_SUITE_P(
+	TPack, OrbitTranspositionTest,
+	testing::Values(
+		OrbitTranspositionTest::param_tuple({ 2, 1, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 })),
+		OrbitTranspositionTest::param_tuple({ 3, 2, 1, 0 }, util::make_info_l({ 4, 4, 4, 4 }, { 0, 1, 2, 3 })),
+		// Repeated values
+		OrbitTranspositionTest::param_tuple({ 2, 1, 1, 0 }, util::make_info_l({ 3, 3, 3, 3 }, { 0, 1, 2, 3 })),
+		OrbitTranspositionTest::param_tuple({ 1, 1, 0, 0 }, util::make_info_l({ 3, 3, 3, 3 }, { 0, 1, 2, 3 })),
+		// Multiple levels
+		OrbitTranspositionTest::param_tuple({ 1, 0, 2, 2, 2, 0 }, util::make_info_p({ 3, 3, 3, 3, 3, 3 }, { { 0, 1, 2 }, { 3, 4, 5 } })),
+		OrbitTranspositionTest::param_tuple({ 0, 1, 1, 2, 1, 1 }, util::make_info_p({ 3, 3, 3, 3, 3, 3 }, { { 0, 1, 2 }, { 3, 4, 5 } })),
+		// Multiple partitions
+		OrbitTranspositionTest::param_tuple({ 2, 1, 0, 1, 0 }, util::make_info({ 3, 3, 3, 3, 3 }, { { { 0, 1, 2 } }, { { 3, 4 } } }))
 	)
 );
 // clang-format on
