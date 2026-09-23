@@ -162,9 +162,6 @@ public:
 		constexpr difference_type operator-(const ColIter &other) const {
 			return static_cast< difference_type >(m_col - other.m_col);
 		}
-		constexpr difference_type operator+(const ColIter &other) const {
-			return static_cast< difference_type >(m_col + other.m_col);
-		}
 
 		constexpr ColIter &operator+=(difference_type amount) {
 			assert(amount >= 0 || static_cast< std::size_t >(-amount) >= m_col);
@@ -195,7 +192,6 @@ public:
 			copy -= amount;
 			return copy;
 		}
-		friend constexpr ColIter operator-(difference_type amount, const ColIter &iter) { return iter - amount; }
 
 		constexpr ColIter &operator++() { return *this += 1; }
 		constexpr ColIter operator++(int) {
