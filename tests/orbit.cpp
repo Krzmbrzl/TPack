@@ -91,15 +91,15 @@ INSTANTIATE_TEST_SUITE_P(
 		// Tuple elements are assigned column-wise through different levels. That is, for a partition
 		// { { 0, 1 }, { 2, 3 } } the index-valued tuples would be (0, 2) and (1, 3). Applied to a
 		// specific indexing (5, 4, 6, 7), this would result in the tuples (5, 6) < (4, 7)
-		OrbitTest::param_tuple({ 0, 0, 0, 0 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
-		OrbitTest::param_tuple({ 0, 1, 0, 0 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), false),
-		OrbitTest::param_tuple({ 0, 0, 1, 0 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
-		OrbitTest::param_tuple({ 0, 0, 0, 1 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), false),
-		OrbitTest::param_tuple({ 0, 1, 1, 0 }, util::make_info_p({ 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
+		OrbitTest::param_tuple({ 0, 0, 0, 0 }, util::make_info_p({ 3, 3, 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
+		OrbitTest::param_tuple({ 0, 1, 0, 0 }, util::make_info_p({ 3, 3, 3, 3 }, { { 0, 1 }, { 2, 3 } }), false),
+		OrbitTest::param_tuple({ 0, 0, 1, 0 }, util::make_info_p({ 3, 3, 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
+		OrbitTest::param_tuple({ 0, 0, 0, 1 }, util::make_info_p({ 3, 3, 3, 3 }, { { 0, 1 }, { 2, 3 } }), false),
+		OrbitTest::param_tuple({ 0, 1, 1, 0 }, util::make_info_p({ 3, 3, 3, 3 }, { { 0, 1 }, { 2, 3 } }), true),
 		// In case of multiple partitions, they have to be canonical individually without any defined order between them
-		OrbitTest::param_tuple({ 1, 0, 0 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
-		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
-		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false),
+		OrbitTest::param_tuple({ 1, 0, 0 }, util::make_info({ 3, 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
+		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
+		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false),
 		OrbitTest::param_tuple({ 1, 0, 0, 1 }, util::make_info({ 3, 3, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }), false)
 	)
 );
