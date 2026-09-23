@@ -36,6 +36,8 @@ TEST_P(RankTest, unrank) {
 INSTANTIATE_TEST_SUITE_P(
 	TPack, RankTest,
 	::testing::Values(
+		// Scalar (no indices and hence no partitions)
+		RankTest::param_tuple({}, util::make_info({}, {}), 0),
 		RankTest::param_tuple({ 0 }, util::make_info_l({ 1 }, { 0 }), 0),
 		RankTest::param_tuple({ 0 }, util::make_info_l({ 3 }, { 0 }), 0),
 		RankTest::param_tuple({ 2 }, util::make_info_l({ 3 }, { 0 }), 2),

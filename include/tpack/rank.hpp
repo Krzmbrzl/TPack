@@ -100,10 +100,10 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 
 	std::ranges::fill(idx, 0);
 
-	// Compute the stride for the last partition, which is given by the product of
-	// the dimensions of all partitions prior to it.
+	// Product of the dimensions of all partitions. Dividing this by the dimension of the last partition
+	// yields the stride of the last partition.
 	std::size_t part_stride = 1;
-	for (auto &&part_levels : parts | std::ranges::views::take(size(parts) - 1)) {
+	for (auto &&part_levels : parts) {
 		std::size_t col_dim        = 1;
 		const std::size_t num_cols = size(*begin(part_levels));
 		for (auto &&level : part_levels) {
@@ -115,7 +115,6 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 		part_stride *= current_part_dim;
 	}
 
-	bool first = true;
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
 		const std::size_t num_cols = size(*begin(part_levels));
 		// The dimension of all columns must be equal so we will
@@ -125,16 +124,12 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 			col_dim *= dims[*begin(level)];
 		}
 
-		if (!first) {
-			// Update the partition stride for the current partition by dividing part_stride
-			// by the dimension of the current partition
-			const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
-			assert(part_stride % current_part_dim == 0);
-			part_stride /= current_part_dim;
-			assert(part_stride >= 1);
-		} else {
-			first = false;
-		}
+		// Obtain the stride of the current partition by dividing part_stride
+		// by the dimension of the current partition
+		const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
+		assert(part_stride % current_part_dim == 0);
+		part_stride /= current_part_dim;
+		assert(part_stride >= 1);
 
 		if (col_dim <= 1) {
 			// This partition can only take on a single value (or no value, which would be odd
