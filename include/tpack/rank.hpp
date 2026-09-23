@@ -219,6 +219,8 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts) {
+	using std::ranges::size;
+
 	Indexing idx;
 	idx.resize(size(dims));
 
