@@ -44,14 +44,14 @@ public:
 
 		constexpr ColRef &operator=(ColRef &&other) {
 			for (auto &level : m_col_view.levels()) {
-				level[m_col] = std::move(m_col_view.proxy()[level[other.m_col]]);
+				m_col_view.proxy()[level[m_col]] = std::move(m_col_view.proxy()[level[other.m_col]]);
 			}
 
 			return *this;
 		}
-		constexpr ColRef &operator=(ColRef &&other) const {
+		constexpr const ColRef &operator=(ColRef &&other) const {
 			for (auto &level : m_col_view.levels()) {
-				level[m_col] = std::move(m_col_view.proxy()[level[other.m_col]]);
+				m_col_view.proxy()[level[m_col]] = std::move(m_col_view.proxy()[level[other.m_col]]);
 			}
 
 			return *this;
@@ -66,7 +66,7 @@ public:
 
 			return *this;
 		}
-		constexpr ColRef &operator=(ColVal &&val) const {
+		constexpr const ColRef &operator=(ColVal &&val) const {
 			std::size_t i = 0;
 			for (const auto &level : m_col_view.levels()) {
 				m_col_view.proxy()[level[m_col]] = std::move(val.values[i]);

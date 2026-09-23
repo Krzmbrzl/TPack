@@ -64,6 +64,20 @@ TEST(TPack, ColViewTest_compare) {
 	ASSERT_NE(static_cast< CVal >(view[0]), view[1]);
 }
 
+TEST(TPack, ColViewTest_sort_indexing) {
+	const std::vector< std::vector< std::size_t > > orig_levels = { { 0, 1, 2 }, { 3, 4, 5 } };
+	std::vector< std::vector< std::size_t > > levels            = orig_levels;
+	std::vector< std::size_t > indexing                         = { 0, 2, 1, 5, 3, 4 };
+	LevelColumnsIndexingView view(levels, indexing);
+
+	std::ranges::sort(view);
+
+	// Sorting must permute the indexing but leave the levels untouched
+	const std::vector< std::size_t > expected = { 2, 1, 0, 3, 4, 5 };
+	EXPECT_EQ(indexing, expected);
+	EXPECT_EQ(levels, orig_levels);
+}
+
 TEST_P(ColViewTest, sort) {
 	auto [actual, expected] = GetParam();
 	LevelColumnsView view(actual);
