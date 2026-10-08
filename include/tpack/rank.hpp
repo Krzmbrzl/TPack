@@ -16,8 +16,19 @@ namespace tpack {
 
 namespace details {
 
-	/// Checks the precondition of rank()/unrank() that, within every level of a partition, all indices share
-	/// the same dimension. The algorithms rely on this by taking any one column as the level's dimension.
+	/**
+	 * @brief Checks that every level of a partition references indices of a single, shared dimension.
+	 *
+	 * rank() and unrank() rely on this invariant: they read the dimension of a level from an arbitrary one
+	 * of its indices, which is only well-defined if all indices in the level agree. Intended for use inside
+	 * @c assert.
+	 *
+	 * @tparam PartLevels A range of levels (each level a range of index positions).
+	 * @tparam Dimensions A random-access range mapping each index to its dimension.
+	 * @param part_levels The levels of a single partition.
+	 * @param dims The dimension of every index.
+	 * @return @c true if, within each level, all indices share the same dimension.
+	 */
 	template< std::ranges::range PartLevels, std::ranges::random_access_range Dimensions >
 	constexpr bool levels_have_uniform_dimension(const PartLevels &part_levels, const Dimensions &dims) {
 		using std::ranges::begin;
@@ -36,6 +47,33 @@ namespace details {
 
 } // namespace details
 
+/**
+ * @brief Computes the dense rank (storage offset) of a canonical indexing.
+ *
+ * Maps a canonical representative to a contiguous integer in @c [0, num_orbits(dims, parts)). Each partition
+ * is collapsed into an effective one-dimensional symmetric index whose columns form a non-increasing
+ * sequence; that sequence is ranked with the combinatorial number system
+ * (@f$\sum_i \binom{n_i + k_i - 1}{k_i}@f$), and the per-partition ranks are combined via a mixed-radix
+ * stride, mirroring how unrank() inverts the process.
+ *
+ * This overload takes caller-provided scratch storage to avoid per-call allocation and is usable in a
+ * @c constexpr context.
+ *
+ * @tparam Indexing A random-access range holding one index value per tensor index.
+ * @tparam EffectiveIndexing A random-access range used as scratch space for the collapsed index.
+ * @tparam Dimensions A random-access range mapping each index to its dimension.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param idx The canonical indexing to rank.
+ * @param dims The dimension of every index.
+ * @param parts The symmetry partitions.
+ * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
+ *        columns. Its contents are overwritten and carry no meaning on return.
+ * @return The rank of @p idx in @c [0, num_orbits(dims, parts)).
+ *
+ * @pre @p idx is canonical (see is_canonical) and @c size(idx) == size(dims).
+ * @pre Within every level of a partition, all indices share the same dimension.
+ * @see unrank, num_orbits, is_canonical
+ */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx) {
@@ -98,6 +136,23 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 	return rank;
 }
 
+/**
+ * @brief Computes the dense rank of a canonical indexing, managing scratch storage internally.
+ *
+ * Convenience overload that reuses a thread-local scratch buffer and otherwise behaves exactly like
+ * rank(Indexing&&, Dimensions&&, Partitions&&, EffectiveIndexing&&).
+ *
+ * @tparam Indexing A random-access range holding one index value per tensor index.
+ * @tparam Dimensions A random-access range mapping each index to its dimension.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param idx The canonical indexing to rank.
+ * @param dims The dimension of every index.
+ * @param parts The symmetry partitions.
+ * @return The rank of @p idx in @c [0, num_orbits(dims, parts)).
+ *
+ * @pre @p idx is canonical (see is_canonical) and @c size(idx) == size(dims).
+ * @see unrank, num_orbits
+ */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
 		  std::ranges::range Partitions >
 std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts) {
@@ -112,6 +167,34 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts) {
 
 
 
+/**
+ * @brief Reconstructs the canonical indexing from a rank (the inverse of rank()).
+ *
+ * Recovers the canonical representative whose rank() equals @p rank. Processing the partitions in reverse,
+ * the rank is split into a per-partition rank via the mixed-radix stride; each per-partition rank is decoded
+ * back into a non-increasing effective index using the combinatorial number system (greedily subtracting the
+ * largest binomial not exceeding the remaining rank), and the effective index is finally scattered back
+ * across the partition's levels.
+ *
+ * This overload takes caller-provided scratch storage to avoid per-call allocation and is usable in a
+ * @c constexpr context.
+ *
+ * @tparam Indexing A random-access range receiving one index value per tensor index.
+ * @tparam EffectiveIndexing A random-access range used as scratch space for the collapsed index.
+ * @tparam Dimensions A random-access range mapping each index to its dimension.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param idx [out] Overwritten with the reconstructed canonical indexing.
+ * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts)).
+ * @param dims The dimension of every index.
+ * @param parts The symmetry partitions.
+ * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
+ *        columns. Its contents are overwritten and carry no meaning on return.
+ *
+ * @pre @c size(idx) == size(dims).
+ * @pre Within every level of a partition, all indices share the same dimension.
+ * @post is_canonical(idx, parts) holds.
+ * @see rank, num_orbits
+ */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts,
@@ -230,6 +313,24 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 	assert(is_canonical(idx, parts));
 }
 
+/**
+ * @brief Reconstructs the canonical indexing from a rank, managing scratch storage internally.
+ *
+ * Convenience overload that reuses a thread-local scratch buffer and otherwise behaves exactly like
+ * unrank(Indexing&&, std::size_t, Dimensions&&, Partitions&&, EffectiveIndexing&&).
+ *
+ * @tparam Indexing A random-access range receiving one index value per tensor index.
+ * @tparam Dimensions A random-access range mapping each index to its dimension.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param idx [out] Overwritten with the reconstructed canonical indexing.
+ * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts)).
+ * @param dims The dimension of every index.
+ * @param parts The symmetry partitions.
+ *
+ * @pre @c size(idx) == size(dims).
+ * @post is_canonical(idx, parts) holds.
+ * @see rank
+ */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
 		  std::ranges::range Partitions >
 void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts) {
@@ -242,6 +343,23 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
 	unrank(idx, rank, dims, parts, effective_idx);
 }
 
+/**
+ * @brief Reconstructs and returns a freshly allocated canonical indexing from a rank.
+ *
+ * Convenience overload that allocates and returns the indexing instead of writing into a caller-provided
+ * buffer. The container type defaults to @c std::vector<std::size_t> and can be overridden explicitly.
+ *
+ * @tparam Indexing The container type to allocate and return (default @c std::vector<std::size_t>).
+ * @tparam Dimensions A random-access range mapping each index to its dimension.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts)).
+ * @param dims The dimension of every index.
+ * @param parts The symmetry partitions.
+ * @return The reconstructed canonical indexing, sized to @c size(dims).
+ *
+ * @post is_canonical(return value, parts) holds.
+ * @see rank
+ */
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts) {

@@ -13,6 +13,24 @@
 
 namespace tpack::details {
 
+/**
+ * @brief Presents the levels of a partition as a random-access range of columns.
+ *
+ * A partition is a set of levels, each a list of index positions of equal length. Taking the entry at the
+ * same position across all levels yields a @e column -- the tuple that the symmetry permutes. This view
+ * exposes those columns as a mutable random-access range so that standard algorithms such as
+ * @c std::ranges::sort and @c std::ranges::next_permutation can reorder whole columns at once. Columns are
+ * compared in reverse-lexicographic order (the last level is most significant), matching the canonical order
+ * used throughout the library.
+ *
+ * Element access goes through a @p Proxy that decides @e what is permuted: LevelProxy swaps the index
+ * positions stored in the levels themselves, whereas IndexingProxy keeps the levels fixed and permutes the
+ * values of an external indexing. Because a column spans several non-contiguous storage locations, the view
+ * yields proxy references (@c ColRef) and proxy values (@c ColVal) rather than plain references.
+ *
+ * @tparam Proxy The access policy mapping a stored index to the value participating in comparison/swapping.
+ * @tparam Levels The range of levels backing the view.
+ */
 template< typename Proxy, std::ranges::range Levels > class LevelColumnsViewBase {
 public:
 	// See also https://artificial-mind.net/blog/2020/11/28/std-sort-multiple-ranges
@@ -248,6 +266,14 @@ private:
 	Proxy m_proxy;
 };
 
+/**
+ * @brief LevelColumnsViewBase access policy that permutes the values of an external indexing.
+ *
+ * The levels (index positions) stay fixed; comparing and swapping columns reads and writes the referenced
+ * entries of @p Indexing. Use this to reorder a concrete indexing into (or out of) canonical form.
+ *
+ * @tparam Indexing A random-access range holding one value per tensor index.
+ */
 template< std::ranges::random_access_range Indexing > struct IndexingProxy {
 	using value_type      = std::ranges::range_value_t< Indexing >;
 	using reference       = std::add_lvalue_reference_t< value_type >;
@@ -271,6 +297,14 @@ template< std::ranges::random_access_range Indexing > struct IndexingProxy {
 	Indexing &m_indexing;
 };
 
+/**
+ * @brief LevelColumnsViewBase access policy that permutes the index positions stored in the levels.
+ *
+ * Here the levels are the data: comparing and swapping columns reorders the index positions themselves. Use
+ * this to canonicalise a partition specification independently of any concrete indexing.
+ *
+ * @tparam Levels The range of levels being reordered.
+ */
 template< std::ranges::range Levels > struct LevelProxy {
 	using value_type      = std::ranges::range_value_t< std::ranges::range_value_t< Levels > >;
 	using reference       = std::add_lvalue_reference_t< value_type >;
@@ -288,12 +322,23 @@ template< std::ranges::range Levels > struct LevelProxy {
 	constexpr const_reference operator[](const_reference idx) const { return idx; }
 };
 
+/**
+ * @brief Column view over a partition that permutes the values of an external indexing (IndexingProxy).
+ *
+ * @tparam Levels The range of levels backing the view.
+ * @tparam Indexing A random-access range holding one value per tensor index.
+ */
 template< std::ranges::range Levels, std::ranges::random_access_range Indexing >
 struct LevelColumnsIndexingView : LevelColumnsViewBase< IndexingProxy< Indexing >, Levels > {
 	LevelColumnsIndexingView(Levels &levels, Indexing &idx)
 		: LevelColumnsViewBase< IndexingProxy< Indexing >, Levels >(levels, IndexingProxy(idx)) {}
 };
 
+/**
+ * @brief Column view over a partition that permutes the index positions stored in the levels (LevelProxy).
+ *
+ * @tparam Levels The range of levels backing (and reordered by) the view.
+ */
 template< std::ranges::range Levels > struct LevelColumnsView : LevelColumnsViewBase< LevelProxy< Levels >, Levels > {
 	LevelColumnsView(Levels &levels)
 		: LevelColumnsViewBase< LevelProxy< Levels >, Levels >(levels, LevelProxy< Levels >{}) {}

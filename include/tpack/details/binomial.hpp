@@ -11,7 +11,25 @@
 
 namespace tpack::details {
 
-/// Compute the binomial coefficient (n over k)
+/**
+ * @brief Computes the binomial coefficient @f$\binom{n}{k}@f$.
+ *
+ * The result is accumulated via the multiplicative formula, interleaving
+ * multiplications and divisions so that the running value stays as small as
+ * possible and intermediate overflow is avoided wherever the final result is
+ * representable. See the
+ * <a href="https://en.wikipedia.org/wiki/Binomial_coefficient#Multiplicative_formula">
+ * multiplicative formula</a> for the underlying identity.
+ *
+ * @param n The size of the set to choose from.
+ * @param k The number of elements to choose. Must satisfy @p k <= @p n.
+ * @return The number of @p k -element subsets of an @p n -element set.
+ *
+ * @pre @p n >= @p k.
+ * @note Intermediate overflow is guarded by assertions (active only when
+ *       @c NDEBUG is not defined); the final result must fit into a
+ *       @c std::size_t.
+ */
 constexpr std::size_t binomial(std::size_t n, std::size_t k) {
 	assert(n >= k);
 
