@@ -119,7 +119,10 @@ INSTANTIATE_TEST_SUITE_P(
 		PartitionTest::param_tuple({ { { 1,  0 }, { 3, 2 } }, { { 4 } } }, { { { 1, 0 }, { 3, 2 } }, { { 4 } } }, true),
 		PartitionTest::param_tuple({ { { 2,  1 }, { 4, 3 } }, { { 0 } } }, { { { 0 } }, { { 2, 1 }, { 4, 3 } } }, true),
 		PartitionTest::param_tuple({ { { 2,  1 }, { 4, 3 } }, { { 0 } } }, { { { 3, 4 }, { 1, 2 } }, { { 0 } } }, false),
-		PartitionTest::param_tuple({ { { 1,  0 }, { 3, 2 } }, { { 4 } } }, { { { 4 } }, { { 2, 3 }, { 0, 1 } } }, false)
+		PartitionTest::param_tuple({ { { 1,  0 }, { 3, 2 } }, { { 4 } } }, { { { 4 } }, { { 2, 3 }, { 0, 1 } } }, false),
+		// Partitions are ordered by their smallest (col-major) or largest (row-major) index
+		PartitionTest::param_tuple({ { { 5,  0 } }, { { 3, 4 } } }, { { { 5, 0 } }, { { 4, 3 } } }, true),
+		PartitionTest::param_tuple({ { { 3,  4 } }, { { 5, 0 } } }, { { { 0, 5 } }, { { 3, 4 } } }, false)
 	)
 );
 // clang-format on

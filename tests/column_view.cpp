@@ -3,6 +3,7 @@
 #include <tpack/details/level_columns_view.hpp>
 
 #include <algorithm>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -62,6 +63,48 @@ TEST(TPack, ColViewTest_compare) {
 	ASSERT_GE(static_cast< CVal >(view[0]), view[0]);
 	ASSERT_EQ(static_cast< CVal >(view[0]), view[0]);
 	ASSERT_NE(static_cast< CVal >(view[0]), view[1]);
+}
+
+TEST(TPack, ColViewTest_sort_indexing) {
+	const std::vector< std::vector< std::size_t > > orig_levels = { { 0, 1, 2 }, { 3, 4, 5 } };
+	std::vector< std::vector< std::size_t > > levels            = orig_levels;
+	std::vector< std::size_t > indexing                         = { 0, 2, 1, 5, 3, 4 };
+	LevelColumnsIndexingView view(levels, indexing);
+
+	std::ranges::sort(view);
+
+	// Sorting must permute the indexing but leave the levels untouched
+	const std::vector< std::size_t > expected = { 2, 1, 0, 3, 4, 5 };
+	EXPECT_EQ(indexing, expected);
+	EXPECT_EQ(levels, orig_levels);
+}
+
+TEST(TPack, ColViewTest_convert_lvalue) {
+	std::vector< std::vector< std::size_t > > levels = { { 0, 1 } };
+	std::vector< std::string > indexing              = { "first", "second" };
+	LevelColumnsIndexingView view(levels, indexing);
+
+	const auto ref                                          = view[0];
+	const std::remove_cvref_t< decltype(view) >::ColVal val = ref;
+
+	// Converting an lvalue must not modify the referenced values
+	EXPECT_EQ(val.values, std::vector< std::string >{ "first" });
+	EXPECT_EQ(indexing[0], "first");
+}
+
+TEST(TPack, ColViewTest_iterator_arithmetic) {
+	std::vector< std::vector< std::size_t > > levels = { { 0, 1, 2, 3 } };
+	LevelColumnsView view(levels);
+
+	auto it = view.begin() + 3;
+	it += -1;
+	EXPECT_EQ(it - view.begin(), 2);
+	it -= 1;
+	EXPECT_EQ(it - view.begin(), 1);
+	it -= -2;
+	EXPECT_EQ(it - view.begin(), 3);
+	it += -3;
+	EXPECT_EQ(it, view.begin());
 }
 
 TEST_P(ColViewTest, sort) {

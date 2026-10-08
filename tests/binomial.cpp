@@ -24,7 +24,14 @@ TEST_P(BinomialTest, binomial) {
 INSTANTIATE_TEST_SUITE_P(
 	TPack, BinomialTest,
 	testing::Values(
+		std::make_tuple(0, 0, 1),
+		std::make_tuple(5, 0, 1),
 		std::make_tuple(1, 1, 1),
+		// k == 1 and n - k == 1 are handled by dedicated branches
+		std::make_tuple(7, 1, 7),
+		std::make_tuple(7, 6, 7),
+		// k > n - k, so the computation uses the n - k symmetry
+		std::make_tuple(10, 8, 45),
 		std::make_tuple(4, 2, 6),
 		std::make_tuple(8, 8, 1),
 		std::make_tuple(256, 4, 174792640),

@@ -14,6 +14,28 @@
 
 namespace tpack {
 
+namespace details {
+
+	/// Checks the precondition of rank()/unrank() that, within every level of a partition, all indices share
+	/// the same dimension. The algorithms rely on this by taking any one column as the level's dimension.
+	template< std::ranges::range PartLevels, std::ranges::random_access_range Dimensions >
+	constexpr bool levels_have_uniform_dimension(const PartLevels &part_levels, const Dimensions &dims) {
+		using std::ranges::begin;
+
+		for (const auto &level : part_levels) {
+			const std::size_t dim = dims[*begin(level)];
+			for (const auto &index : level) {
+				if (dims[index] != dim) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+} // namespace details
+
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx) {
@@ -28,6 +50,8 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 
 	std::size_t stride = 1;
 	for (auto &&part_levels : parts) {
+		assert(details::levels_have_uniform_dimension(part_levels, dims));
+
 		// Convert into effective 1D partition (merge different partition levels)
 		const std::size_t effective_size = size(*begin(part_levels));
 		assert(effective_idx.size() >= effective_size);
@@ -100,10 +124,12 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 
 	std::ranges::fill(idx, 0);
 
-	// Compute the stride for the last partition, which is given by the product of
-	// the dimensions of all partitions prior to it.
+	// Product of the dimensions of all partitions. Dividing this by the dimension of the last partition
+	// yields the stride of the last partition.
 	std::size_t part_stride = 1;
-	for (auto &&part_levels : parts | std::ranges::views::take(size(parts) - 1)) {
+	for (auto &&part_levels : parts) {
+		assert(details::levels_have_uniform_dimension(part_levels, dims));
+
 		std::size_t col_dim        = 1;
 		const std::size_t num_cols = size(*begin(part_levels));
 		for (auto &&level : part_levels) {
@@ -115,7 +141,6 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 		part_stride *= current_part_dim;
 	}
 
-	bool first = true;
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
 		const std::size_t num_cols = size(*begin(part_levels));
 		// The dimension of all columns must be equal so we will
@@ -125,16 +150,12 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 			col_dim *= dims[*begin(level)];
 		}
 
-		if (!first) {
-			// Update the partition stride for the current partition by dividing part_stride
-			// by the dimension of the current partition
-			const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
-			assert(part_stride % current_part_dim == 0);
-			part_stride /= current_part_dim;
-			assert(part_stride >= 1);
-		} else {
-			first = false;
-		}
+		// Obtain the stride of the current partition by dividing part_stride
+		// by the dimension of the current partition
+		const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
+		assert(part_stride % current_part_dim == 0);
+		part_stride /= current_part_dim;
+		assert(part_stride >= 1);
 
 		if (col_dim <= 1) {
 			// This partition can only take on a single value (or no value, which would be odd
@@ -160,16 +181,13 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 								   return details::binomial(val + num_cols - col - 1, num_cols - col);
 							   });
 
-			std::size_t num_combinations = 0;
-			auto it = std::ranges::partition_point(generator, [&num_combinations, current_rank](std::size_t val) {
-				if (val <= current_rank) {
-					num_combinations = val;
-				}
-				return val > current_rank;
-			});
+			auto it =
+				std::ranges::partition_point(generator, [current_rank](std::size_t val) { return val > current_rank; });
 
-			std::size_t n = 0;
+			std::size_t num_combinations = 0;
+			std::size_t n                = 0;
 			if (it != end(generator)) {
+				num_combinations = *it;
 				static_assert(std::sized_sentinel_for< decltype(it), decltype(begin(generator)) >,
 							  "Distance computation not possible in O(1)");
 				n = max_n - static_cast< std::size_t >(std::ranges::distance(begin(generator), it));
@@ -227,6 +245,8 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts) {
+	using std::ranges::size;
+
 	Indexing idx;
 	idx.resize(size(dims));
 
