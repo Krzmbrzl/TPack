@@ -5,6 +5,7 @@
 #include <tpack/orbit.hpp>
 
 #include <cstddef>
+#include <set>
 #include <tuple>
 #include <vector>
 
@@ -100,7 +101,13 @@ INSTANTIATE_TEST_SUITE_P(
 		OrbitTest::param_tuple({ 1, 0, 0 }, util::make_info({ 3, 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
 		OrbitTest::param_tuple({ 1, 0, 2 }, util::make_info({ 3, 3, 3 }, { { { 0, 1 } }, { { 2 } } }), true),
 		OrbitTest::param_tuple({ 0, 1, 2 }, util::make_info({ 3, 3, 3 }, { { { 0, 1 } }, { { 2 } } }), false),
-		OrbitTest::param_tuple({ 1, 0, 0, 1 }, util::make_info({ 3, 3, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }), false)
+		OrbitTest::param_tuple({ 1, 0, 0, 1 }, util::make_info({ 3, 3, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }), false),
+		// A scalar (no indices, no partitions) is trivially canonical
+		OrbitTest::param_tuple({}, util::make_info({}, {}), true),
+		// Reverse lexicographic tie-break: when the most significant level is equal between two
+		// columns, the less significant one decides the order
+		OrbitTest::param_tuple({ 1, 0, 5, 5 }, util::make_info_p({ 6, 6, 6, 6 }, { { 0, 1 }, { 2, 3 } }), true),
+		OrbitTest::param_tuple({ 0, 1, 5, 5 }, util::make_info_p({ 6, 6, 6, 6 }, { { 0, 1 }, { 2, 3 } }), false)
 	)
 );
 // clang-format on
@@ -168,6 +175,54 @@ INSTANTIATE_TEST_SUITE_P(
 		OrbitTranspositionTest::param_tuple({ 0, 1, 1, 2, 1, 1 }, util::make_info_p({ 3, 3, 3, 3, 3, 3 }, { { 0, 1, 2 }, { 3, 4, 5 } })),
 		// Multiple partitions
 		OrbitTranspositionTest::param_tuple({ 2, 1, 0, 1, 0 }, util::make_info({ 3, 3, 3, 3, 3 }, { { { 0, 1, 2 } }, { { 3, 4 } } }))
+	)
+);
+// clang-format on
+
+struct OrbitEnumerationTest
+	: testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::TensorInfo, std::size_t > > {
+	using param_tuple = std::tuple< std::vector< std::size_t >, util::TensorInfo, std::size_t >;
+};
+
+// Starting from the canonical representative, next_orbit_representative must visit every member of the
+// orbit exactly once and then return to the canonical representative.
+TEST_P(OrbitEnumerationTest, next_orbit_representative) {
+	auto [indexing, info, expected_count] = GetParam();
+	ASSERT_TRUE(is_canonical(indexing, info.partitions));
+
+	const auto canonical = indexing;
+
+	std::set< std::vector< std::size_t > > seen;
+	std::size_t count = 0;
+	bool has_more     = true;
+	do {
+		EXPECT_TRUE(seen.insert(indexing).second) << "representative visited more than once";
+		++count;
+		has_more = next_orbit_representative(indexing, info.partitions);
+	} while (has_more);
+
+	EXPECT_EQ(count, expected_count);
+	EXPECT_EQ(indexing, canonical);
+	EXPECT_TRUE(is_canonical(indexing, info.partitions));
+}
+
+// clang-format off
+INSTANTIATE_TEST_SUITE_P(
+	TPack, OrbitEnumerationTest,
+	testing::Values(
+		// Distinct values -> n! representatives
+		OrbitEnumerationTest::param_tuple({ 2, 1, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), 6),
+		OrbitEnumerationTest::param_tuple({ 3, 2, 1, 0 }, util::make_info_l({ 4, 4, 4, 4 }, { 0, 1, 2, 3 }), 24),
+		// Repeated values collapse the orbit (3! / 2! = 3)
+		OrbitEnumerationTest::param_tuple({ 1, 1, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), 3),
+		// All equal -> a single representative
+		OrbitEnumerationTest::param_tuple({ 0, 0, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), 1),
+		// Multiple levels: three distinct column tuples -> 3! representatives
+		OrbitEnumerationTest::param_tuple({ 1, 0, 2, 2, 2, 0 }, util::make_info_p({ 3, 3, 3, 3, 3, 3 }, { { 0, 1, 2 }, { 3, 4, 5 } }), 6),
+		// Multiple partitions: the orbit sizes multiply (3! * 2! = 12)
+		OrbitEnumerationTest::param_tuple({ 2, 1, 0, 1, 0 }, util::make_info({ 3, 3, 3, 3, 3 }, { { { 0, 1, 2 } }, { { 3, 4 } } }), 12),
+		// Scalar: a single representative
+		OrbitEnumerationTest::param_tuple({}, util::make_info({}, {}), 1)
 	)
 );
 // clang-format on
