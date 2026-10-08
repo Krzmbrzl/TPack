@@ -14,6 +14,28 @@
 
 namespace tpack {
 
+namespace details {
+
+	/// Checks the precondition of rank()/unrank() that, within every level of a partition, all indices share
+	/// the same dimension. The algorithms rely on this by taking any one column as the level's dimension.
+	template< std::ranges::range PartLevels, std::ranges::random_access_range Dimensions >
+	constexpr bool levels_have_uniform_dimension(const PartLevels &part_levels, const Dimensions &dims) {
+		using std::ranges::begin;
+
+		for (const auto &level : part_levels) {
+			const std::size_t dim = dims[*begin(level)];
+			for (const auto &index : level) {
+				if (dims[index] != dim) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+} // namespace details
+
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx) {
@@ -28,6 +50,8 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 
 	std::size_t stride = 1;
 	for (auto &&part_levels : parts) {
+		assert(details::levels_have_uniform_dimension(part_levels, dims));
+
 		// Convert into effective 1D partition (merge different partition levels)
 		const std::size_t effective_size = size(*begin(part_levels));
 		assert(effective_idx.size() >= effective_size);
@@ -104,6 +128,8 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 	// yields the stride of the last partition.
 	std::size_t part_stride = 1;
 	for (auto &&part_levels : parts) {
+		assert(details::levels_have_uniform_dimension(part_levels, dims));
+
 		std::size_t col_dim        = 1;
 		const std::size_t num_cols = size(*begin(part_levels));
 		for (auto &&level : part_levels) {
