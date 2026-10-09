@@ -41,8 +41,7 @@ foreach (_name IN LISTS TPACK_DOC_SNIPPETS)
 	# Compiled as a standalone consumer (include path only, no library build flags)
 	# so the snippets exercise the public headers exactly as a downstream user would.
 	add_executable(${_tgt} "${_tpack_snippet_dir}/${_name}.cpp")
-	target_include_directories(${_tgt} PRIVATE "${PROJECT_SOURCE_DIR}/include")
-	target_compile_features(${_tgt} PRIVATE cxx_std_20)
+	target_link_libraries(${_tgt} PRIVATE TPack::TPack)
 	set_target_properties(${_tgt} PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 
 	if (TPACK_DOC_SNIPPET_${_name}_RUN)

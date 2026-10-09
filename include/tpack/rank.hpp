@@ -48,7 +48,7 @@ namespace details {
 } // namespace details
 
 /**
- * @brief Computes the dense rank (storage offset) of a canonical indexing.
+ * @brief Computes the packed rank (storage offset) of a canonical indexing.
  *
  * Maps a canonical representative to a contiguous integer in @c [0, num_orbits(dims, parts)). Each partition
  * is collapsed into an effective one-dimensional symmetric index whose columns form a non-increasing
@@ -137,7 +137,7 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 }
 
 /**
- * @brief Computes the dense rank of a canonical indexing, managing scratch storage internally.
+ * @brief Computes the packed rank of a canonical indexing, managing scratch storage internally.
  *
  * Convenience overload that reuses a thread-local scratch buffer and otherwise behaves exactly like
  * rank(Indexing&&, Dimensions&&, Partitions&&, EffectiveIndexing&&).
