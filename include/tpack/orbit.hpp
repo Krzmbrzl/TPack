@@ -15,6 +15,25 @@
 namespace tpack {
 
 
+/**
+ * @brief Counts the orbits of a symmetric indexing, i.e. the number of distinct canonical representatives.
+ *
+ * Every partition is treated as an independent fully symmetric group acting on its columns. A column is the
+ * tuple of indices obtained by taking one index from each level at the same position, so its combined range
+ * (the @e effective @e dimension) is the product of the per-level dimensions. Choosing @c num_cols such
+ * columns up to permutation is counting multisets, hence
+ * @f$\binom{\text{effective\_dim} + \text{num\_cols} - 1}{\text{num\_cols}}@f$ representatives per partition.
+ * The total number of orbits is the product across all partitions.
+ *
+ * @tparam Dimensions A random-access range mapping each index to its dimension.
+ * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
+ * @param dims The dimension (extent) of every index of the tensor.
+ * @param partitions The symmetry partitions acting on the tensor's indices.
+ * @return The number of orbits, i.e. the number of entries required to store the symmetric tensor.
+ *
+ * @pre Within every level of a partition, all referenced indices share the same dimension.
+ * @see rank, unrank
+ */
 template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
 constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 	using std::ranges::begin;
@@ -40,8 +59,19 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 
 namespace details {
 
-	/// Computes the change (modulo 2^N) in the number of inversions (pairs of columns in ascending order) caused by
-	/// applying std::ranges::next_permutation(columns, std::greater<>{})
+	/**
+	 * @brief Computes the change in the number of column inversions produced by one @c next_permutation step.
+	 *
+	 * An inversion is a pair of columns that is in ascending order (i.e. out of canonical, non-increasing
+	 * order). This returns, modulo @f$2^N@f$, the signed delta that
+	 * @c std::ranges::next_permutation(columns, std::greater<>{}) applies to that inversion count, computed
+	 * directly from the pivot/suffix structure of the permutation without materialising the full count. The
+	 * modular result is exactly what is needed to keep a running transposition counter correct.
+	 *
+	 * @tparam Columns The column-view type exposing @c num_cols() and indexed column comparison.
+	 * @param columns The columns about to be advanced; inspected but not modified.
+	 * @return The inversion-count delta (wrapping on @c std::size_t) of the next permutation step.
+	 */
 	template< typename Columns > constexpr std::size_t next_permutation_inversion_delta(Columns &columns) {
 		const std::size_t num_cols = columns.num_cols();
 		if (num_cols == 0) {
@@ -77,11 +107,29 @@ namespace details {
 
 } // namespace details
 
-/// Transforms idx into the next representative of its orbit. Returns false (after transforming idx back into the
-/// canonical representative) if there is none.
-/// If counters is given, counters[i] is updated such that, if it was zero for the canonical representative, it always
-/// equals the number of (adjacent) transpositions of columns of partition i that separate idx from the canonical
-/// representative. This also holds for repeated columns.
+/**
+ * @brief Advances an indexing to the next representative of its symmetry orbit.
+ *
+ * Starting from any representative, repeated calls enumerate every member of the orbit exactly once and,
+ * on the final call, restore @p idx to its canonical representative while returning @c false. Columns of the
+ * last partition vary fastest; when a partition exhausts its permutations the enumeration carries over into
+ * the next one, so the partitions behave like digits of a mixed-radix counter.
+ *
+ * @tparam Indexing A random-access range holding one index value per tensor index.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Counters A range of per-partition counters (defaults to @c std::vector<std::size_t>).
+ * @param idx [in,out] The indexing to advance in place.
+ * @param parts The symmetry partitions.
+ * @param counters Optional pointer to one counter per partition. When supplied and zero-initialised for the
+ *        canonical representative, @c counters[i] always equals the number of adjacent column transpositions
+ *        of partition @c i separating @p idx from the canonical representative, repeated columns included.
+ *        This parity/count information is useful for antisymmetric tensors, where it fixes the sign.
+ * @return @c true if @p idx was advanced to a further representative, @c false once the orbit is exhausted
+ *         (in which case @p idx has been reset to the canonical representative).
+ *
+ * @pre If @p counters is non-null it must hold exactly one element per partition.
+ * @see is_canonical
+ */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
 		  std::ranges::range Counters = std::vector< std::size_t > >
 constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Counters *counters = nullptr) {
@@ -118,6 +166,22 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Cou
 	return false;
 }
 
+/**
+ * @brief Tests whether an indexing is the canonical representative of its orbit.
+ *
+ * An indexing is canonical when, in every partition, the columns are in non-increasing order. Columns are
+ * compared in reverse-lexicographic order: the last (most significant) level decides first, and earlier
+ * levels only break ties. Each partition is checked independently; there is no ordering requirement between
+ * different partitions.
+ *
+ * @tparam Indexing A random-access range holding one index value per tensor index.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param indexing The indexing to test.
+ * @param partitions The symmetry partitions.
+ * @return @c true if @p indexing is canonical, @c false otherwise.
+ *
+ * @see next_orbit_representative, rank
+ */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
 	using std::ranges::begin;

@@ -38,12 +38,15 @@ if (PROJECT_IS_TOP_LEVEL)
 	endif()
 
 	set(ENABLE_BENCHMARKS_DEFAULT ON)
+	set(ENABLE_DOC_SNIPPETS_DEFAULT ON)
 else()
 	set(ENABLE_BENCHMARKS_DEFAULT OFF)
+	set(ENABLE_DOC_SNIPPETS_DEFAULT OFF)
 endif()
 
 option(TPACK_ENABLE_TESTING "Whether to build tests" ON)
 option(TPACK_ENABLE_BENCHMARKS "Whether to build benchmarks" ${ENABLE_BENCHMARKS_DEFAULT})
+option(TPACK_BUILD_DOC_SNIPPETS "Whether to build and test the documentation code snippets" ${ENABLE_DOC_SNIPPETS_DEFAULT})
 option(TPACK_INSTALL "Whether to configure an install target for TPack" ON)
 
 if (TPACK_ENABLE_TESTING)
@@ -53,6 +56,10 @@ endif()
 
 if (TPACK_ENABLE_BENCHMARKS)
 	add_subdirectory(benchmarks)
+endif()
+
+if (TPACK_BUILD_DOC_SNIPPETS)
+	add_subdirectory(docs)
 endif()
 
 
