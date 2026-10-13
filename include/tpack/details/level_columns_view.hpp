@@ -225,7 +225,7 @@ public:
 			return copy;
 		}
 
-		constexpr reference operator[](difference_type idx) const { return { m_col + idx, *m_col_view }; }
+		constexpr reference operator[](difference_type idx) const { return *(*this + idx); }
 
 		constexpr bool operator==(const ColIter &other) const { return m_col == other.m_col; }
 
