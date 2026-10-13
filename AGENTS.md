@@ -49,8 +49,11 @@ otherwise it is not installed.
 
 ## Compiler Warnings
 
-Top-level builds compile with `-Wall -Wextra -Wpedantic -Werror`, so a warning
-is a build failure. Fix warnings rather than suppressing them, unless they are
+Top-level builds compile with a set of warning flags (including `-Werror`), so a
+warning is a build failure. The exact set can change over time, so consult the
+`target_compile_options(tensor_packing ...)` call in the top-level
+`CMakeLists.txt` for the current, authoritative list rather than relying on the
+flags named here. Fix warnings rather than suppressing them, unless they are
 clearly false-positives and fixing them would cause unreasonable code bloat or
 performance/readability issues. Any non-trivially fixable warning must be
 reported for further investigation by a human instead of being silently
