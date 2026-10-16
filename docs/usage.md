@@ -5,7 +5,8 @@ in namespace `tpack`; helpers under `tpack::details` are implementation details 
 
 | Header | Public API |
 | --- | --- |
-| `<tpack/orbit.hpp>` | `num_orbits`, `is_canonical`, `next_orbit_representative` |
+| `<tpack/orbit.hpp>` | `num_orbits`, `next_orbit_representative` |
+| `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
 | `<tpack/partition.hpp>` | `sort_partition_col_major`, `sort_partition_row_major` |
 
@@ -128,7 +129,7 @@ for (std::size_t r = 0; r < count; ++r) {
 ```
 
 Passing a non-canonical indexing to `rank` is a precondition violation (checked by assertions); canonicalise it first with
-`next_orbit_representative`. Both functions also offer an overload taking an explicit scratch buffer (`effective_idx`) to avoid the internal
+`canonicalize`. Both functions also offer an overload taking an explicit scratch buffer (`effective_idx`) to avoid the internal
 thread-local allocation in hot loops; those overloads are `constexpr`.
 
 ### `is_canonical` / `next_orbit_representative`
@@ -143,7 +144,8 @@ non-increasing in reverse-lexicographic order within every partition.
 
 `next_orbit_representative` walks the orbit: starting from any member, each call advances `idx` in place to the next member and returns `true`; the
 call that exhausts the orbit returns `false` and restores `idx` to the canonical representative. It is the tool for _scattering_ a packed value to all
-the dense positions it represents (as in the getting-started example) and for canonicalising an arbitrary indexing.
+the dense positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use
+`canonicalize`.
 
 <!-- tpack-snippet: name=usage_enumerate -->
 ```cpp
@@ -163,6 +165,33 @@ assert((idx == std::vector<std::size_t>{2, 1, 0}));  // restored to canonical
 ```
 
 The optional `counters` argument (one counter per partition) is not needed for symmetric packing; see the API reference for its meaning.
+
+### `canonicalize`
+
+```
+void canonicalize(idx, partitions);
+```
+
+`canonicalize` rewrites `idx` in place into the canonical representative of its orbit by sorting the columns of every partition into non-increasing
+reverse-lexicographic order. After it returns, `is_canonical(idx, partitions)` holds, and any two members of the same orbit are mapped to the same
+indexing. This is the direct way to put an arbitrary indexing into the form `rank` requires.
+
+<!-- tpack-snippet: name=usage_canonicalize -->
+```cpp
+std::vector<std::size_t> dims = {4, 4, 4};
+std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1, 2}}};
+
+std::vector<std::size_t> idx = {0, 2, 1};            // not canonical
+assert(!tpack::is_canonical(idx, partitions));
+
+tpack::canonicalize(idx, partitions);
+
+assert(tpack::is_canonical(idx, partitions));
+assert((idx == std::vector<std::size_t>{2, 1, 0}));  // columns now non-increasing
+
+// rank() now accepts the canonicalised indexing.
+assert(tpack::rank(idx, dims, partitions) < tpack::num_orbits(dims, partitions));
+```
 
 ### `sort_partition_col_major` / `sort_partition_row_major`
 

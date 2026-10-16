@@ -24,7 +24,7 @@ namespace tpack {
  * @param partitions The symmetry partitions.
  * @return @c true if @p indexing is canonical, @c false otherwise.
  *
- * @see next_orbit_representative, rank
+ * @see canonicalize, next_orbit_representative, rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
