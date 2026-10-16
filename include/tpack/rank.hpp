@@ -4,6 +4,7 @@
 
 #include <tpack/details/binomial.hpp>
 #include <tpack/orbit.hpp>
+#include <tpack/indexing.hpp>
 
 #include <algorithm>
 #include <cassert>
