@@ -275,9 +275,11 @@ private:
  * @tparam Indexing A random-access range holding one value per tensor index.
  */
 template< std::ranges::random_access_range Indexing > struct IndexingProxy {
-	using value_type      = std::ranges::range_value_t< Indexing >;
-	using reference       = std::add_lvalue_reference_t< value_type >;
-	using const_reference = std::add_lvalue_reference_t< std::add_const_t< value_type > >;
+	using value_type = std::ranges::range_value_t< Indexing >;
+	// range_reference_t tracks the constness of Indexing, so a const indexing
+	// yields a read-only reference
+	using reference       = std::ranges::range_reference_t< Indexing >;
+	using const_reference = std::ranges::range_reference_t< const Indexing >;
 
 	constexpr IndexingProxy(Indexing &indexing) : m_indexing(indexing) {}
 

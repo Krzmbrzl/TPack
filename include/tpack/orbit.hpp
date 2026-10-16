@@ -5,8 +5,11 @@
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
 
+#include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <iterator>
+#include <limits>
 #include <numeric>
 #include <ranges>
 #include <type_traits>
@@ -164,6 +167,62 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Cou
 
 	// All candidates have been produced -> indexing is now transformed (back) to canonical representative
 	return false;
+}
+
+/**
+ * @brief Compute the number of elements that lie in the same orbit as the provided indexing
+ *
+ * @tparam Indexing A random-access range holding one index value per tensor index.
+ * @tparam Partitions A range of partitions describing the symmetry.
+ * @param idx The reference indexing
+ * @param parts The symmetry partitions.
+ * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
+ * @return Number of elements in the respective orbit
+ *
+ * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
+ */
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
+constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false) {
+	using std::ranges::begin;
+	using std::ranges::size;
+
+	std::size_t orb_size = 1;
+
+	for (auto &&part_levels : parts) {
+		details::LevelColumnsIndexingView columns(part_levels, idx);
+
+		const std::size_t num_cols = size(*begin(part_levels));
+
+		// A canonical representation keeps equal columns neighbouring; otherwise sort an index permutation so
+		// that equal columns become adjacent (idx itself is left untouched).
+		std::vector< std::size_t > order(num_cols);
+		std::iota(order.begin(), order.end(), std::size_t(0));
+		if (!indexing_canonical) {
+			std::ranges::sort(order, [&](std::size_t lhs, std::size_t rhs) { return columns[lhs] < columns[rhs]; });
+		}
+
+		// Permuting equal columns yields the same indexing, so the orbit of this fully symmetric partition has
+		// num_cols! / prod(repeats_k!) members (a multinomial coefficient). Accumulating it as a product of
+		// binomials over the runs of equal columns keeps every intermediate no larger than the final value, so
+		// it does not overflow whenever the result itself is representable.
+		std::size_t partition_orbit_size = 1;
+		std::size_t placed               = 0;
+		for (std::size_t i = 0; i < num_cols; ++i) {
+			std::size_t repeats = 1;
+			while (i + 1 < num_cols && columns[order[i]] == columns[order[i + 1]]) {
+				++i;
+				++repeats;
+			}
+
+			placed += repeats;
+			partition_orbit_size *= details::binomial(placed, repeats);
+		}
+
+		assert(std::numeric_limits< decltype(orb_size) >::max() / partition_orbit_size >= orb_size);
+		orb_size *= partition_orbit_size;
+	}
+
+	return orb_size;
 }
 
 } // namespace tpack

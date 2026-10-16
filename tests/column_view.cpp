@@ -65,6 +65,28 @@ TEST(TPack, ColViewTest_compare) {
 	ASSERT_NE(static_cast< CVal >(view[0]), view[1]);
 }
 
+TEST(TPack, ColViewTest_const_indexing) {
+	// A const indexing must still support read-only column access: comparison and value extraction work
+	// while the indexing itself stays untouched. orbit_size() relies on this.
+	std::vector< std::vector< std::size_t > > levels = { { 0, 1 }, { 2, 3 } };
+	const std::vector< std::size_t > indexing        = { 1, 0, 1, 0 };
+	LevelColumnsIndexingView view(levels, indexing);
+
+	// Reverse-lexicographic columns: column 0 = (idx[0], idx[2]) = (1, 1), column 1 = (idx[1], idx[3]) = (0, 0)
+	ASSERT_GT(view[0], view[1]);
+	ASSERT_LT(view[1], view[0]);
+	ASSERT_EQ(view[0], view[0]);
+	ASSERT_NE(view[0], view[1]);
+
+	using CVal      = std::remove_cvref_t< decltype(view) >::ColVal;
+	const CVal col0 = view[0];
+	EXPECT_EQ(col0.values, (std::vector< std::size_t >{ 1, 1 }));
+
+	// Mixed ColRef/ColVal comparison stays available over the const indexing
+	ASSERT_GT(view[0], static_cast< CVal >(view[1]));
+	ASSERT_LT(static_cast< CVal >(view[1]), view[0]);
+}
+
 TEST(TPack, ColViewTest_sort_indexing) {
 	const std::vector< std::vector< std::size_t > > orig_levels = { { 0, 1, 2 }, { 3, 4, 5 } };
 	std::vector< std::vector< std::size_t > > levels            = orig_levels;
