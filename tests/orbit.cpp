@@ -3,6 +3,7 @@
 #include "helper.hpp"
 
 #include <tpack/orbit.hpp>
+#include <tpack/indexing.hpp>
 
 #include <cstddef>
 #include <set>
@@ -46,14 +47,6 @@ INSTANTIATE_TEST_SUITE_P(
 struct OrbitTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::TensorInfo, bool > > {
 	using param_tuple = std::tuple< std::vector< std::size_t >, util::TensorInfo, bool >;
 };
-
-TEST_P(OrbitTest, is_canonical) {
-	auto [indexing, info, expected] = GetParam();
-
-	bool actual = is_canonical(indexing, info.partitions);
-
-	EXPECT_EQ(expected, actual);
-}
 
 TEST_P(OrbitTest, next_orbit_representative) {
 	auto [indexing, info, canonical] = GetParam();
