@@ -53,8 +53,6 @@ struct OrbitTest : testing::TestWithParam< std::tuple< std::vector< std::size_t 
 TEST_P(OrbitTest, next_orbit_representative) {
 	auto [indexing, info, canonical] = GetParam();
 
-	auto orig = indexing;
-
 	std::size_t num_representatives = 0;
 	do {
 		num_representatives++;
