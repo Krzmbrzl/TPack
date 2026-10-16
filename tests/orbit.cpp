@@ -2,10 +2,12 @@
 
 #include "helper.hpp"
 
-#include <tpack/orbit.hpp>
 #include <tpack/indexing.hpp>
+#include <tpack/orbit.hpp>
 
+#include <algorithm>
 #include <cstddef>
+#include <numeric>
 #include <set>
 #include <tuple>
 #include <vector>
@@ -219,5 +221,74 @@ INSTANTIATE_TEST_SUITE_P(
 	)
 );
 // clang-format on
+
+struct OrbitSizeTest
+	: testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::TensorInfo, bool, std::size_t > > {
+	using param_tuple = std::tuple< std::vector< std::size_t >, util::TensorInfo, bool, std::size_t >;
+};
+
+// orbit_size reports the number of orbit members of a given representative, canonical or not, without
+// modifying the indexing. For a canonical representative the result matches the enumeration count checked
+// by OrbitEnumerationTest as well as the indexing_canonical fast path.
+TEST_P(OrbitSizeTest, orbit_size) {
+	auto [indexing, info, is_canon, expected] = GetParam();
+
+	const auto orig = indexing;
+
+	EXPECT_EQ(orbit_size(indexing, info.partitions), expected);
+	EXPECT_EQ(indexing, orig) << "orbit_size must not modify the indexing";
+
+	if (is_canon) {
+		ASSERT_TRUE(is_canonical(indexing, info.partitions));
+		EXPECT_EQ(orbit_size(indexing, info.partitions, true), expected);
+	}
+}
+
+// clang-format off
+INSTANTIATE_TEST_SUITE_P(
+	TPack, OrbitSizeTest,
+	testing::Values(
+		// Canonical representatives with known orbit sizes (cf. OrbitEnumerationTest)
+		OrbitSizeTest::param_tuple({ 2, 1, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), true, 6),
+		OrbitSizeTest::param_tuple({ 3, 2, 1, 0 }, util::make_info_l({ 4, 4, 4, 4 }, { 0, 1, 2, 3 }), true, 24),
+		// Repeated values collapse the orbit (3! / 2! = 3)
+		OrbitSizeTest::param_tuple({ 1, 1, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), true, 3),
+		// All equal -> a single representative
+		OrbitSizeTest::param_tuple({ 0, 0, 0 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), true, 1),
+		// Multiple levels: three distinct column tuples -> 3!
+		OrbitSizeTest::param_tuple({ 1, 0, 2, 2, 2, 0 }, util::make_info_p({ 3, 3, 3, 3, 3, 3 }, { { 0, 1, 2 }, { 3, 4, 5 } }), true, 6),
+		// Multiple partitions: the orbit sizes multiply (3! * 2! = 12)
+		OrbitSizeTest::param_tuple({ 2, 1, 0, 1, 0 }, util::make_info({ 3, 3, 3, 3, 3 }, { { { 0, 1, 2 } }, { { 3, 4 } } }), true, 12),
+		// A single-column partition always yields an orbit of size one
+		OrbitSizeTest::param_tuple({ 4 }, util::make_info_l({ 8 }, { 0 }), true, 1),
+		// Scalar: a single member
+		OrbitSizeTest::param_tuple({}, util::make_info({}, {}), true, 1),
+		// Non-canonical representatives must give the same orbit size (the default path sorts internally)
+		OrbitSizeTest::param_tuple({ 0, 1, 2 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), false, 6),
+		OrbitSizeTest::param_tuple({ 0, 1, 1 }, util::make_info_l({ 3, 3, 3 }, { 0, 1, 2 }), false, 3),
+		OrbitSizeTest::param_tuple({ 0, 1, 2, 0, 1 }, util::make_info({ 3, 3, 3, 3, 3 }, { { { 0, 1, 2 } }, { { 3, 4 } } }), false, 12),
+		OrbitSizeTest::param_tuple({ 0, 1, 2, 2, 2, 0 }, util::make_info_p({ 3, 3, 3, 3, 3, 3 }, { { 0, 1, 2 }, { 3, 4, 5 } }), false, 6)
+	)
+);
+// clang-format on
+
+// A fully symmetric partition of 21 columns whose values split into runs of 11 and 10 has an orbit of
+// 21! / (11! 10!) = C(21, 11) = 352716 members. That result fits into size_t even though the intermediate
+// 21! does not, so a naive factorial-based computation would overflow here.
+TEST(TPack, OrbitSizeTest_no_intermediate_overflow) {
+	constexpr std::size_t num_cols = 21;
+
+	std::vector< std::size_t > level(num_cols);
+	std::iota(level.begin(), level.end(), std::size_t(0));
+	const util::TensorInfo info = util::make_info_l(std::vector< std::size_t >(num_cols, 2), level);
+
+	// Canonical (non-increasing) representative: eleven 1s followed by ten 0s.
+	std::vector< std::size_t > indexing(num_cols, 0);
+	std::fill(indexing.begin(), indexing.begin() + 11, std::size_t(1));
+	ASSERT_TRUE(is_canonical(indexing, info.partitions));
+
+	EXPECT_EQ(orbit_size(indexing, info.partitions), std::size_t(352716));
+	EXPECT_EQ(orbit_size(indexing, info.partitions, true), std::size_t(352716));
+}
 
 } // namespace tpack::tests
