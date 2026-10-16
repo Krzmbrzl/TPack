@@ -5,7 +5,7 @@ in namespace `tpack`; helpers under `tpack::details` are implementation details 
 
 | Header | Public API |
 | --- | --- |
-| `<tpack/orbit.hpp>` | `num_orbits`, `next_orbit_representative` |
+| `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
 | `<tpack/partition.hpp>` | `sort_partition_col_major`, `sort_partition_row_major` |
@@ -165,6 +165,28 @@ assert((idx == std::vector<std::size_t>{2, 1, 0}));  // restored to canonical
 ```
 
 The optional `counters` argument (one counter per partition) is not needed for symmetric packing; see the API reference for its meaning.
+
+### `orbit_size`
+
+```
+std::size_t orbit_size(idx, partitions, indexing_canonical = false);
+```
+
+`orbit_size` returns how many indexings share the orbit of `idx` — i.e. how many dense positions a single packed value expands to, which is exactly the
+number of members `next_orbit_representative` would visit. It depends only on the column multiplicities, so it works from *any* member of the orbit and
+leaves `idx` unchanged. **Internally** it multiplies, over all partitions, the multinomial coefficient `num_cols! / (m₁! · m₂! · …)`, where the `mₖ` are
+the multiplicities of the distinct columns. Pass `indexing_canonical = true` when `idx` is already canonical to skip the internal sort.
+
+<!-- tpack-snippet: name=usage_orbit_size -->
+```cpp
+std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1, 2}}};
+
+std::vector<std::size_t> idx = {2, 1, 0};             // three distinct columns
+assert(tpack::orbit_size(idx, partitions) == 6);      // 3! members in this orbit
+
+std::vector<std::size_t> repeated = {2, 1, 1};        // one repeated column
+assert(tpack::orbit_size(repeated, partitions) == 3); // 3! / 2!
+```
 
 ### `canonicalize`
 
