@@ -62,8 +62,16 @@ TEST_P(OrbitTest, next_orbit_representative) {
 
 	EXPECT_TRUE(is_canonical(indexing, info.partitions));
 
-	// TODO: have a way to compute the expected number of orbit representatives and compare with that
-	EXPECT_GE(num_representatives, 1);
+	// The loop above restored the canonical representative, so orbit_size() may use its fast path.
+	const std::size_t orbit = orbit_size(indexing, info.partitions, true);
+	if (canonical) {
+		// Started from the canonical representative, enumeration visits the whole orbit.
+		EXPECT_EQ(num_representatives, orbit);
+	} else {
+		// A non-canonical starting point only enumerates the orbit's remaining suffix before wrapping.
+		EXPECT_GE(num_representatives, std::size_t(1));
+		EXPECT_LE(num_representatives, orbit);
+	}
 }
 
 // clang-format off
