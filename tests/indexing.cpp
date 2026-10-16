@@ -24,6 +24,28 @@ TEST_P(IndexingTest, is_canonical) {
 	EXPECT_EQ(tpack::is_canonical(indexing, partitions), is_canonical);
 }
 
+TEST_P(IndexingTest, canonicalize) {
+	auto [indexing, partitions, is_canonical] = GetParam();
+
+	if (!is_canonical) {
+		canonicalize(indexing, partitions);
+	}
+
+	ASSERT_TRUE(tpack::is_canonical(indexing, partitions));
+
+	auto canonicals_indexing = indexing;
+
+	ASSERT_TRUE(tpack::is_canonical(canonicals_indexing, partitions));
+
+	do {
+		auto copy = indexing;
+
+		canonicalize(copy, partitions);
+
+		EXPECT_EQ(copy, canonicals_indexing);
+	} while (next_orbit_representative(indexing, partitions));
+}
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
 	TPack, IndexingTest,
