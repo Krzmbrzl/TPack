@@ -12,6 +12,7 @@ set_target_properties(tensor_packing PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 target_sources(tensor_packing
 	PUBLIC FILE_SET tpack_header TYPE HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/include"
 	FILES
+		"include/tpack/details/apply_permutation.hpp"
 		"include/tpack/details/binomial.hpp"
 		"include/tpack/details/factorial.hpp"
 		"include/tpack/details/level_columns_view.hpp"
