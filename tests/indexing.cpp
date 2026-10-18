@@ -76,4 +76,44 @@ INSTANTIATE_TEST_SUITE_P(
 );
 // clang-format on
 
+TEST(TPack, AntisymmetricCanonicalizePhase) {
+	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const std::vector< bool > anti{ true };
+
+	// Already canonical (strictly decreasing) -> phase +1
+	std::vector< std::size_t > a{ 2, 1, 0 };
+	EXPECT_EQ(canonicalize(a, parts, anti), 1);
+	EXPECT_EQ(a, (std::vector< std::size_t >{ 2, 1, 0 }));
+
+	// One transposition from canonical -> phase -1
+	std::vector< std::size_t > b{ 1, 2, 0 };
+	EXPECT_EQ(canonicalize(b, parts, anti), -1);
+	EXPECT_EQ(b, (std::vector< std::size_t >{ 2, 1, 0 }));
+
+	// Two transpositions from canonical -> phase +1
+	std::vector< std::size_t > c{ 0, 2, 1 };
+	EXPECT_EQ(canonicalize(c, parts, anti), 1);
+	EXPECT_EQ(c, (std::vector< std::size_t >{ 2, 1, 0 }));
+
+	// Repeated columns -> vanishes (phase 0), but still canonicalized
+	std::vector< std::size_t > d{ 1, 2, 1 };
+	EXPECT_EQ(canonicalize(d, parts, anti), 0);
+	EXPECT_EQ(d, (std::vector< std::size_t >{ 2, 1, 1 }));
+
+	// Symmetric partitions never contribute a sign
+	std::vector< std::size_t > e{ 0, 2, 1 };
+	EXPECT_EQ(canonicalize(e, parts), 1);
+}
+
+TEST(TPack, AntisymmetricIsCanonical) {
+	const util::PartitionList parts{ { { 0, 1 } } };
+	const std::vector< bool > anti{ true };
+
+	EXPECT_TRUE(is_canonical(std::vector< std::size_t >{ 2, 1 }, parts, anti));
+	EXPECT_FALSE(is_canonical(std::vector< std::size_t >{ 1, 2 }, parts, anti));
+	// Equal columns are not canonical for an antisymmetric partition, but are for a symmetric one
+	EXPECT_FALSE(is_canonical(std::vector< std::size_t >{ 1, 1 }, parts, anti));
+	EXPECT_TRUE(is_canonical(std::vector< std::size_t >{ 1, 1 }, parts));
+}
+
 } // namespace tpack::tests
