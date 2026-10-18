@@ -2,12 +2,18 @@
 
 #pragma once
 
+#include <tpack/details/apply_permutation.hpp>
 #include <tpack/details/level_columns_view.hpp>
+#include <tpack/details/symmetry.hpp>
 
 #include <algorithm>
+#include <cassert>
+#include <cstddef>
 #include <functional>
+#include <numeric>
 #include <ranges>
 #include <type_traits>
+#include <vector>
 
 namespace tpack {
 
@@ -22,12 +28,19 @@ namespace details {
 	 * column-major variant the smallest index is treated as extremal (sorted ascending); for row-major it is
 	 * the largest. The index-to-dimension mapping is unaffected, so the reordering is purely organisational.
 	 *
+	 * When a per-partition sign array is supplied it is reordered in lockstep with the partitions, so each
+	 * partition keeps its antisymmetry flag.
+	 *
 	 * @tparam col_major @c true to order for a column-major (smallest index first) layout, @c false for
 	 *         row-major (largest index first).
 	 * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
+	 * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
 	 * @param partitions [in,out] The partition specification to reorder in place.
+	 * @param signs [in,out] The per-partition sign array to reorder in lockstep; the all_symmetric_t sentinel
+	 *        leaves nothing to reorder.
 	 */
-	template< bool col_major, std::ranges::range Partitions > void sort_partition(Partitions &&partitions) {
+	template< bool col_major, std::ranges::range Partitions, sign_range Signs = all_symmetric_t >
+	void sort_partition(Partitions &&partitions, Signs &&signs = all_symmetric_t{}) {
 		using std::ranges::begin;
 
 		using cmp_less    = std::conditional_t< col_major, std::less<>, std::greater<> >;
@@ -44,10 +57,28 @@ namespace details {
 			std::ranges::sort(columns, cmp_greater{});
 		}
 
-		// The first level of every partition contains the partition's extremal index
-		std::ranges::sort(partitions, cmp_less{}, [](const auto &part_levels) {
+		// The first level of every partition contains the partition's extremal index. Reorder partitions via an
+		// index permutation so a parallel sign array can follow the same moves; partitions act on disjoint
+		// indices, so the extremal-index keys are unique and the ordering is deterministic.
+		auto part_key = [](const auto &part_levels) {
 			return *std::ranges::min_element(*begin(part_levels), cmp_less{});
-		});
+		};
+
+		std::vector< std::size_t > keys;
+		for (auto &&part_levels : partitions) {
+			keys.push_back(part_key(part_levels));
+		}
+
+		std::vector< std::size_t > order(keys.size());
+		std::iota(order.begin(), order.end(), std::size_t(0));
+		std::ranges::sort(order, cmp_less{}, [&keys](std::size_t i) { return keys[i]; });
+
+		if constexpr (std::is_same_v< std::remove_cvref_t< Signs >, all_symmetric_t >) {
+			details::apply_permutation(order, partitions);
+		} else {
+			assert(static_cast< std::size_t >(std::ranges::distance(signs)) == keys.size());
+			details::apply_permutation(order, partitions, signs);
+		}
 	}
 
 } // namespace details
@@ -60,12 +91,15 @@ namespace details {
  * partitions become identical, yielding a stable rank()/unrank() layout.
  *
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param partitions [in,out] The partition specification to reorder in place.
+ * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
  *
  * @see sort_partition_row_major
  */
-template< std::ranges::range Partitions > void sort_partition_col_major(Partitions &&partitions) {
-	details::sort_partition< true >(partitions);
+template< std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+void sort_partition_col_major(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
+	details::sort_partition< true >(partitions, signs);
 }
 
 /**
@@ -75,12 +109,15 @@ template< std::ranges::range Partitions > void sort_partition_col_major(Partitio
  * matching a row-major storage order.
  *
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param partitions [in,out] The partition specification to reorder in place.
+ * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
  *
  * @see sort_partition_col_major
  */
-template< std::ranges::range Partitions > void sort_partition_row_major(Partitions &&partitions) {
-	details::sort_partition< false >(partitions);
+template< std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+void sort_partition_row_major(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
+	details::sort_partition< false >(partitions, signs);
 }
 
 } // namespace tpack

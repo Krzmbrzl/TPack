@@ -127,4 +127,23 @@ INSTANTIATE_TEST_SUITE_P(
 );
 // clang-format on
 
+TEST(TPack, SortPartitionReordersSignsInLockstep) {
+	util::PartitionList parts{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
+	std::vector< bool > signs{ true, false, true };
+
+	sort_partition_col_major(parts, signs);
+
+	// Ordered by smallest index; single-level columns sorted descending within each level
+	EXPECT_EQ(parts, (util::PartitionList{ { { 1, 0 } }, { { 3, 2 } }, { { 5, 4 } } }));
+	EXPECT_EQ(signs, (std::vector< bool >{ false, true, true }));
+
+	util::PartitionList parts_row{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
+	std::vector< bool > signs_row{ true, false, true };
+
+	sort_partition_row_major(parts_row, signs_row);
+
+	EXPECT_EQ(parts_row, (util::PartitionList{ { { 4, 5 } }, { { 2, 3 } }, { { 0, 1 } } }));
+	EXPECT_EQ(signs_row, (std::vector< bool >{ true, true, false }));
+}
+
 } // namespace tpack::tests
