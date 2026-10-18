@@ -297,4 +297,25 @@ TEST(TPack, OrbitSizeTest_no_intermediate_overflow) {
 	EXPECT_EQ(orbit_size(indexing, info.partitions, true), std::size_t(352716));
 }
 
+TEST(TPack, AntisymmetricOrbitCount) {
+	const util::Dimensions dims{ 4, 4 };
+	const util::PartitionList parts{ { { 0, 1 } } };
+
+	EXPECT_EQ(num_orbits(dims, parts, std::vector< bool >{ true }), 6u);   // C(4, 2)
+	EXPECT_EQ(num_orbits(dims, parts, std::vector< bool >{ false }), 10u); // C(5, 2)
+
+	// Fewer distinct values than columns -> no antisymmetric representatives exist
+	EXPECT_EQ(
+		num_orbits(util::Dimensions{ 2, 2, 2 }, util::PartitionList{ { { 0, 1, 2 } } }, std::vector< bool >{ true }),
+		0u);
+}
+
+TEST(TPack, AntisymmetricOrbitSize) {
+	const util::PartitionList parts{ { { 0, 1 } } };
+	const std::vector< bool > anti{ true };
+
+	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, false, anti), 2u); // distinct columns -> 2!
+	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, false, anti), 0u); // equal columns -> vanishes
+}
+
 } // namespace tpack::tests
