@@ -145,21 +145,24 @@ TEST_P(OrbitTranspositionTest, next_orbit_representative) {
 	auto [indexing, info] = GetParam();
 	ASSERT_TRUE(is_canonical(indexing, info.partitions));
 
-	std::vector< std::size_t > num_transpositions(info.partitions.size(), 0);
+	// Treat every partition as antisymmetric so the tracked phase is the parity of the column permutations of
+	// all partitions combined, i.e. (-1) raised to the total number of column inversions.
+	const std::vector< bool > signs(info.partitions.size(), true);
 
+	int phase     = 1;
 	bool has_more = false;
 	do {
-		has_more = next_orbit_representative(indexing, info.partitions, &num_transpositions);
+		has_more = next_orbit_representative(indexing, info.partitions, signs, &phase);
 
+		std::size_t total_inversions = 0;
 		for (std::size_t i = 0; i < info.partitions.size(); ++i) {
-			EXPECT_EQ(num_transpositions[i], num_inversions(indexing, info.partitions[i])) << "partition " << i;
+			total_inversions += num_inversions(indexing, info.partitions[i]);
 		}
+		EXPECT_EQ(phase, total_inversions % 2 == 0 ? 1 : -1);
 	} while (has_more);
 
 	EXPECT_TRUE(is_canonical(indexing, info.partitions));
-	for (std::size_t count : num_transpositions) {
-		EXPECT_EQ(count, 0);
-	}
+	EXPECT_EQ(phase, 1);
 }
 
 // clang-format off

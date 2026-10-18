@@ -127,44 +127,41 @@ namespace details {
  * last partition vary fastest; when a partition exhausts its permutations the enumeration carries over into
  * the next one, so the partitions behave like digits of a mixed-radix counter.
  *
+ * When a @p phase pointer is supplied, the running antisymmetric sign is maintained in @c *phase: on each
+ * advance it is multiplied by the parity of the column permutation applied to the antisymmetric partitions,
+ * so @c *phase always equals @c (-1) raised to the number of column transpositions (over all antisymmetric
+ * partitions) separating @p idx from the canonical representative. The caller must initialise @c *phase to
+ * that value before the first call; starting the enumeration at the canonical representative, that value is
+ * @c +1. Symmetric partitions never contribute a sign.
+ *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Counters A range of per-partition counters (defaults to @c std::vector<std::size_t>).
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param idx [in,out] The indexing to advance in place.
  * @param parts The symmetry partitions.
- * @param counters Optional pointer to one counter per partition. When supplied and zero-initialised for the
- *        canonical representative, @c counters[i] always equals the number of adjacent column transpositions
- *        of partition @c i separating @p idx from the canonical representative, repeated columns included.
- *        This parity/count information is useful for antisymmetric tensors, where it fixes the sign.
+ * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param phase [in,out] Optional pointer to the running antisymmetric sign (@c +1 or @c -1). When supplied it
+ *        must be initialised to the sign of @p idx relative to canonical before the first call (@c +1 when
+ *        starting from the canonical representative); it is updated in step with @p idx.
  * @return @c true if @p idx was advanced to a further representative, @c false once the orbit is exhausted
  *         (in which case @p idx has been reset to the canonical representative).
  *
- * @pre If @p counters is non-null it must hold exactly one element per partition.
  * @see is_canonical
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  std::ranges::range Counters = std::vector< std::size_t > >
-constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Counters *counters = nullptr) {
-	using std::ranges::begin;
-	using std::ranges::end;
-	using std::ranges::rbegin;
-	using std::ranges::rend;
-	using std::ranges::size;
-
-	assert(!counters || std::ranges::distance(*counters) == std::ranges::distance(parts));
-
-	std::remove_cvref_t< decltype(rbegin(*counters)) > counter_it;
-	if (counters) {
-		counter_it = rbegin(*counters);
-	}
+		  details::sign_range Signs = details::all_symmetric_t >
+constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
+										 const Signs &signs = details::all_symmetric, int *phase = nullptr) {
+	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
 
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+		--part_index;
+		const bool antisym = details::antisymmetric_at(signs, part_index);
+
 		details::LevelColumnsIndexingView columns(part_levels, idx);
 
-		if (counters) {
-			assert(counter_it != rend(*counters));
-			*counter_it += details::next_permutation_inversion_delta(columns);
-			++counter_it;
+		if (phase && antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
+			*phase = -*phase;
 		}
 
 		auto [_, has_more] = std::ranges::next_permutation(columns, std::greater<>{});
