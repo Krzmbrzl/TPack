@@ -15,6 +15,7 @@ target_sources(tensor_packing
 		"include/tpack/details/binomial.hpp"
 		"include/tpack/details/factorial.hpp"
 		"include/tpack/details/level_columns_view.hpp"
+		"include/tpack/details/symmetry.hpp"
 		"include/tpack/orbit.hpp"
 		"include/tpack/partition.hpp"
 		"include/tpack/rank.hpp"
