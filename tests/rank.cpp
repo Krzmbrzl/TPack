@@ -130,4 +130,34 @@ INSTANTIATE_TEST_SUITE_P(
 );
 // clang-format on
 
+TEST(TPack, AntisymmetricRankRoundTrip) {
+	struct Case {
+		util::Dimensions dims;
+		util::PartitionList parts;
+		std::vector< bool > signs;
+	};
+
+	const std::vector< Case > cases{
+		{ { 4, 4 }, { { { 0, 1 } } }, { true } },
+		{ { 5, 5, 5 }, { { { 0, 1, 2 } } }, { true } },
+		{ { 4, 4, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }, { true, false } },
+		{ { 2, 2, 3, 3 }, { { { 0, 1 }, { 2, 3 } } }, { true } },
+	};
+
+	for (const auto &c : cases) {
+		const std::size_t n = num_orbits(c.dims, c.parts, c.signs);
+
+		std::set< std::vector< std::size_t > > seen;
+		for (std::size_t r = 0; r < n; ++r) {
+			const auto idx = unrank< std::vector< std::size_t > >(r, c.dims, c.parts, c.signs);
+
+			EXPECT_TRUE(is_canonical(idx, c.parts, c.signs));
+			EXPECT_EQ(rank(idx, c.dims, c.parts, c.signs), r);
+			EXPECT_TRUE(seen.insert(idx).second) << "rank " << r << " not distinct";
+		}
+
+		EXPECT_EQ(seen.size(), n);
+	}
+}
+
 } // namespace tpack::tests

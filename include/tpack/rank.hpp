@@ -3,8 +3,9 @@
 #pragma once
 
 #include <tpack/details/binomial.hpp>
-#include <tpack/orbit.hpp>
+#include <tpack/details/symmetry.hpp>
 #include <tpack/indexing.hpp>
+#include <tpack/orbit.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -57,6 +58,9 @@ namespace details {
  * (@f$\sum_i \binom{n_i + k_i - 1}{k_i}@f$), and the per-partition ranks are combined via a mixed-radix
  * stride, mirroring how unrank() inverts the process.
  *
+ * An antisymmetric partition is ranked over strictly decreasing columns instead, using the plain
+ * combinatorial number system (@f$\sum_i \binom{n_i}{k_i}@f$) and @f$\binom{d}{k}@f$ as its stride.
+ *
  * This overload takes caller-provided scratch storage to avoid per-call allocation and is usable in a
  * @c constexpr context.
  *
@@ -64,31 +68,40 @@ namespace details {
  * @tparam EffectiveIndexing A random-access range used as scratch space for the collapsed index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param idx The canonical indexing to rank.
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
  * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
  *        columns. Its contents are overwritten and carry no meaning on return.
- * @return The rank of @p idx in @c [0, num_orbits(dims, parts)).
+ * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @return The rank of @p idx in @c [0, num_orbits(dims, parts, signs)).
  *
  * @pre @p idx is canonical (see is_canonical) and @c size(idx) == size(dims).
  * @pre Within every level of a partition, all indices share the same dimension.
  * @see unrank, num_orbits, is_canonical
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
-constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx) {
+		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+		  details::sign_range Signs = details::all_symmetric_t >
+requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) constexpr std::size_t
+	rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
+		 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
 
 	std::size_t rank = 0;
 
-	assert(is_canonical(idx, parts));
+	assert(is_canonical(idx, parts, signs));
 	assert(size(idx) == size(dims));
 
-	std::size_t stride = 1;
+	std::size_t stride     = 1;
+	std::size_t part_index = 0;
 	for (auto &&part_levels : parts) {
+		const bool antisym = details::antisymmetric_at(signs, part_index);
+		++part_index;
+
 		assert(details::levels_have_uniform_dimension(part_levels, dims));
 
 		// Convert into effective 1D partition (merge different partition levels)
@@ -109,13 +122,17 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 			effective_dim = col_stride;
 		}
 
-		// If effective_idx is not sorted, idx wasn't canonical
+		// If effective_idx is not sorted, idx wasn't canonical; an antisymmetric partition must in addition be
+		// strictly decreasing (no equal columns, which would vanish)
 		assert(std::ranges::is_sorted(effective_idx | std::ranges::views::take(effective_size), std::greater<>{}));
+		assert(!antisym
+			   || std::ranges::adjacent_find(effective_idx | std::ranges::views::take(effective_size))
+					  == end(effective_idx | std::ranges::views::take(effective_size)));
 
 		// Compute rank of that effective 1D partition
 		std::size_t current_rank = 0;
 		for (std::size_t i = 0; i < effective_size; ++i) {
-			if (effective_idx[i] == 0) {
+			if (!antisym && effective_idx[i] == 0) {
 				// All subsequent elements must also be zero since we are dealing with
 				// a canonical indexing that guarantees to list elements in non-increasing
 				// order
@@ -124,14 +141,14 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
 
 			const std::size_t n = effective_idx[i];
 			const std::size_t k = effective_size - i;
-			current_rank += details::binomial(n + k - 1, k);
+			current_rank += details::combinatorial_term(n, k, antisym);
 		}
 
 		// Multiply by stride and add to total rank
 		rank += stride * current_rank;
 
 		// Update stride by multiplying it by the max rank of the effective 1D partition
-		stride *= details::binomial(effective_dim + effective_size - 1, effective_size);
+		stride *= details::partition_count(effective_dim, effective_size, antisym);
 	}
 
 	return rank;
@@ -146,24 +163,26 @@ constexpr std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param idx The canonical indexing to rank.
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
- * @return The rank of @p idx in @c [0, num_orbits(dims, parts)).
+ * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @return The rank of @p idx in @c [0, num_orbits(dims, parts, signs)).
  *
  * @pre @p idx is canonical (see is_canonical) and @c size(idx) == size(dims).
  * @see unrank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions >
-std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts) {
+		  std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
 
 	static thread_local std::vector< std::size_t > effective_idx;
 	effective_idx.resize(size(idx));
 
-	return rank(idx, dims, parts, effective_idx);
+	return rank(idx, dims, parts, effective_idx, signs);
 }
 
 
@@ -177,6 +196,9 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts) {
  * largest binomial not exceeding the remaining rank), and the effective index is finally scattered back
  * across the partition's levels.
  *
+ * An antisymmetric partition is decoded over strictly decreasing columns, inverting the plain combinatorial
+ * number system (@f$\binom{n}{k}@f$) with @f$\binom{d}{k}@f$ as its stride.
+ *
  * This overload takes caller-provided scratch storage to avoid per-call allocation and is usable in a
  * @c constexpr context.
  *
@@ -184,22 +206,26 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts) {
  * @tparam EffectiveIndexing A random-access range used as scratch space for the collapsed index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param idx [out] Overwritten with the reconstructed canonical indexing.
- * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts)).
+ * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
  * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
  *        columns. Its contents are overwritten and carry no meaning on return.
+ * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
  *
  * @pre @c size(idx) == size(dims).
  * @pre Within every level of a partition, all indices share the same dimension.
- * @post is_canonical(idx, parts) holds.
+ * @post is_canonical(idx, parts, signs) holds.
  * @see rank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
-constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts,
-					  EffectiveIndexing &&effective_idx) {
+		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+		  details::sign_range Signs = details::all_symmetric_t >
+requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) constexpr void unrank(
+	Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
+	const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -211,7 +237,11 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 	// Product of the dimensions of all partitions. Dividing this by the dimension of the last partition
 	// yields the stride of the last partition.
 	std::size_t part_stride = 1;
+	std::size_t part_index  = 0;
 	for (auto &&part_levels : parts) {
+		const bool antisym = details::antisymmetric_at(signs, part_index);
+		++part_index;
+
 		assert(details::levels_have_uniform_dimension(part_levels, dims));
 
 		std::size_t col_dim        = 1;
@@ -220,12 +250,14 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 			col_dim *= dims[*begin(level)];
 		}
 
-		const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
+		const std::size_t current_part_dim = details::partition_count(col_dim, num_cols, antisym);
 		assert(std::numeric_limits< std::size_t >::max() / current_part_dim >= part_stride);
 		part_stride *= current_part_dim;
 	}
 
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+		const bool antisym = details::antisymmetric_at(signs, --part_index);
+
 		const std::size_t num_cols = size(*begin(part_levels));
 		// The dimension of all columns must be equal so we will
 		// simply determine the dimension of the first column
@@ -236,7 +268,7 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 
 		// Obtain the stride of the current partition by dividing part_stride
 		// by the dimension of the current partition
-		const std::size_t current_part_dim = details::binomial(col_dim + num_cols - 1, num_cols);
+		const std::size_t current_part_dim = details::partition_count(col_dim, num_cols, antisym);
 		assert(part_stride % current_part_dim == 0);
 		part_stride /= current_part_dim;
 		assert(part_stride >= 1);
@@ -256,13 +288,18 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 		assert(effective_idx.size() >= effective_size);
 		std::ranges::fill(effective_idx, 0);
 
-		for (std::size_t col = 0; col < num_cols && current_rank > 0; ++col) {
-			const std::size_t min_n = 1;
-			const std::size_t max_n = col_dim - 1;
+		// A symmetric decode stops once the rank is exhausted, leaving the remaining (smallest) columns at 0.
+		// An antisymmetric decode must visit every column: the exhausted tail is not all-zero but the minimal
+		// strictly decreasing run (remaining-1, ..., 1, 0), which the generator yields when current_rank is 0.
+		for (std::size_t col = 0; col < num_cols && (antisym || current_rank > 0); ++col) {
+			// Symmetric columns are >= 1 once the rank is non-zero; antisymmetric columns may decode to 0.
+			const std::size_t min_n     = antisym ? 0 : 1;
+			const std::size_t max_n     = col_dim - 1;
+			const std::size_t remaining = num_cols - col;
 
 			auto generator = std::ranges::views::reverse(std::ranges::views::iota(min_n, max_n + 1))
-							 | std::ranges::views::transform([num_cols, col](std::size_t val) {
-								   return details::binomial(val + num_cols - col - 1, num_cols - col);
+							 | std::ranges::views::transform([remaining, antisym](std::size_t val) {
+								   return details::combinatorial_term(val, remaining, antisym);
 							   });
 
 			auto it =
@@ -284,9 +321,12 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 
 		assert(current_rank == 0);
 
-		// In order for a 1D indexing consisting of only a single partition to be
-		// canonical, it has to be sorted
+		// In order for a 1D indexing consisting of only a single partition to be canonical, it has to be sorted
+		// (strictly decreasing for an antisymmetric partition).
 		assert(std::ranges::is_sorted(effective_idx | std::ranges::views::take(effective_size), std::greater<>{}));
+		assert(!antisym
+			   || std::ranges::adjacent_find(effective_idx | std::ranges::views::take(effective_size))
+					  == end(effective_idx | std::ranges::views::take(effective_size)));
 
 
 		// Transform effective indexing into actual indexing by splitting
@@ -311,37 +351,40 @@ constexpr void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Parti
 		}
 	}
 
-	assert(is_canonical(idx, parts));
+	assert(is_canonical(idx, parts, signs));
 }
 
 /**
  * @brief Reconstructs the canonical indexing from a rank, managing scratch storage internally.
  *
  * Convenience overload that reuses a thread-local scratch buffer and otherwise behaves exactly like
- * unrank(Indexing&&, std::size_t, Dimensions&&, Partitions&&, EffectiveIndexing&&).
+ * unrank(Indexing&&, std::size_t, Dimensions&&, Partitions&&, EffectiveIndexing&&, const Signs&).
  *
  * @tparam Indexing A random-access range receiving one index value per tensor index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
  * @param idx [out] Overwritten with the reconstructed canonical indexing.
- * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts)).
+ * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
+ * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
  *
  * @pre @c size(idx) == size(dims).
- * @post is_canonical(idx, parts) holds.
+ * @post is_canonical(idx, parts, signs) holds.
  * @see rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions >
-void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts) {
+		  std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts,
+			const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
 
 	static thread_local std::vector< std::size_t > effective_idx;
 	effective_idx.resize(size(dims));
 
-	unrank(idx, rank, dims, parts, effective_idx);
+	unrank(idx, rank, dims, parts, effective_idx, signs);
 }
 
 /**
@@ -353,23 +396,26 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
  * @tparam Indexing The container type to allocate and return (default @c std::vector<std::size_t>).
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts)).
+ * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
+ * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
  * @return The reconstructed canonical indexing, sized to @c size(dims).
  *
- * @post is_canonical(return value, parts) holds.
+ * @post is_canonical(return value, parts, signs) holds.
  * @see rank
  */
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
-Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts) {
+		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+		  details::sign_range Signs = details::all_symmetric_t >
+Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
 	using std::ranges::size;
 
 	Indexing idx;
 	idx.resize(size(dims));
 
-	unrank(idx, rank, dims, parts);
+	unrank(idx, rank, dims, parts, signs);
 
 	return idx;
 }
