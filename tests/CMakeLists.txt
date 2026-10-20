@@ -17,6 +17,7 @@ add_executable(tensor_packing_tests
 	"column_view.cpp"
 	"factorial.cpp"
 	"indexing.cpp"
+	"labeled.cpp"
 	"orbit.cpp"
 	"partition.cpp"
 	"rank.cpp"
