@@ -17,8 +17,8 @@ namespace tpack {
  *
  * Wraps a two-valued enumerator and converts implicitly from the integer sign of a permutation
  * (@c +1 -> @c Symm, @c -1 -> @c Antisymm), so a sign array can be written either with the enumerators
- * (@c {Symmetry::Antisymm, ...}) or with plain signs (@c {-1, ...}). The underlying values are chosen so that
- * @c static_cast<int> recovers that sign.
+ * (@c {Symmetry::Antisymm, ...}) or with plain signs (@c {-1, ...}). The enumerator values are chosen so that
+ * @c static_cast<int> recovers that sign, whether applied to a @c Symmetry or to its @c value.
  */
 struct Symmetry {
 	enum Value : int { Symm = 1, Antisymm = -1 };
@@ -29,6 +29,9 @@ struct Symmetry {
 
 	/// @param sign The integer sign of a permutation; must be exactly @c +1 or @c -1.
 	constexpr Symmetry(int sign) : value(sign < 0 ? Antisymm : Symm) { assert(sign == 1 || sign == -1); }
+
+	/// @return The integer sign of the symmetry (@c +1 for @c Symm, @c -1 for @c Antisymm).
+	constexpr explicit operator int() const { return value; }
 
 	friend constexpr bool operator==(Symmetry, Symmetry) = default;
 };

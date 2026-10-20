@@ -327,6 +327,18 @@ TEST(TPack, SignSpecScalarAndIntForms) {
 	EXPECT_EQ(num_orbits(dims, parts, -1), num_orbits(dims, parts, Symmetry::Antisymm));
 }
 
+TEST(TPack, SymmetryStaticCastToInt) {
+	EXPECT_EQ(static_cast< int >(Symmetry{ Symmetry::Symm }), 1);
+	EXPECT_EQ(static_cast< int >(Symmetry{ Symmetry::Antisymm }), -1);
+
+	// Casting a Symmetry matches casting its underlying value, and round-trips through the integer-sign
+	// constructor.
+	for (const Symmetry s : { Symmetry::Symm, Symmetry::Antisymm }) {
+		EXPECT_EQ(static_cast< int >(s), static_cast< int >(s.value));
+		EXPECT_EQ(Symmetry(static_cast< int >(s)), s);
+	}
+}
+
 TEST(TPack, AntisymmetricOrbitSize) {
 	const util::PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
