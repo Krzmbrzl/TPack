@@ -347,4 +347,34 @@ TEST(TPack, AntisymmetricOrbitSize) {
 	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, false, anti), 0u); // equal columns -> vanishes
 }
 
+TEST(TPack, NextOrbitPhaseMixedSymmetry) {
+	// Partition 0 is symmetric, partition 1 antisymmetric. The tracked phase must reflect only the
+	// antisymmetric partition's column inversions; permuting the symmetric partition contributes no sign.
+	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+	const std::vector< Symmetry > signs{ Symmetry::Symm, Symmetry::Antisymm };
+
+	std::vector< std::size_t > indexing{ 3, 1, 2, 0 }; // canonical for both partitions
+	ASSERT_TRUE(is_canonical(indexing, parts, signs));
+
+	int phase           = 1;
+	std::size_t members = 0;
+	bool has_more       = false;
+	do {
+		has_more = next_orbit_representative(indexing, parts, signs, &phase);
+		++members;
+
+		// Only the antisymmetric partition's inversions fix the sign.
+		const std::size_t antisym_inversions = num_inversions(indexing, parts[1]);
+		EXPECT_EQ(phase, antisym_inversions % 2 == 0 ? 1 : -1);
+
+		// canonicalize must agree on the phase it reports for the same indexing.
+		std::vector< std::size_t > copy = indexing;
+		EXPECT_EQ(canonicalize(copy, parts, signs), phase);
+	} while (has_more);
+
+	EXPECT_EQ(members, 4u); // 2! (symmetric) * 2! (antisymmetric)
+	EXPECT_TRUE(is_canonical(indexing, parts, signs));
+	EXPECT_EQ(phase, 1);
+}
+
 } // namespace tpack::tests

@@ -160,4 +160,26 @@ TEST(TPack, AntisymmetricRankRoundTrip) {
 	}
 }
 
+TEST(TPack, AntisymmetricScratchBufferOverloads) {
+	// Exercise the explicit scratch-buffer overloads of rank/unrank alongside a sign array. The
+	// requires(!signs_spec<EffectiveIndexing>) constraint must keep the scratch buffer and the sign array
+	// unambiguous during overload resolution.
+	const util::Dimensions dims{ 5, 5, 5 };
+	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const std::vector< Symmetry > signs{ Symmetry::Antisymm };
+
+	const std::size_t n = num_orbits(dims, parts, signs);
+	ASSERT_EQ(n, 10u); // C(5, 3)
+
+	std::vector< std::size_t > effective_idx(dims.size());
+
+	for (std::size_t r = 0; r < n; ++r) {
+		std::vector< std::size_t > idx(dims.size());
+		unrank(idx, r, dims, parts, effective_idx, signs);
+
+		EXPECT_TRUE(is_canonical(idx, parts, signs));
+		EXPECT_EQ(rank(idx, dims, parts, effective_idx, signs), r);
+	}
+}
+
 } // namespace tpack::tests
