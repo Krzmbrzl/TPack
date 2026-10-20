@@ -84,7 +84,8 @@ constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions, const 
  * The return value is the phase relating the input to its canonical representative: @c +1 or @c -1 according
  * to the parity of the permutation that sorts the antisymmetric partitions (symmetric partitions never
  * contribute a sign), or @c 0 if the element vanishes because some antisymmetric partition has two equal
- * columns. The indexing is brought into canonical form in all cases.
+ * columns. On a non-vanishing result the indexing is brought into canonical form; when the element vanishes
+ * (@c 0) the indexing is left in an unspecified state.
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
@@ -107,7 +108,6 @@ constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Si
 	details::assert_signs_match(signs, partitions);
 
 	int phase              = 1;
-	bool vanishes          = false;
 	std::size_t part_index = 0;
 
 	for (auto &&part_levels : partitions) {
@@ -139,21 +139,22 @@ constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Si
 				phase = -phase;
 			}
 
+			auto columns_equal = [&](std::size_t lhs, std::size_t rhs) {
+				return std::ranges::all_of(part_levels,
+										   [&](auto &&level) { return indexing[level[lhs]] == indexing[level[rhs]]; });
+			};
+
 			// After sorting, equal columns are adjacent; any such pair makes the element vanish.
-			for (std::size_t col = 1; !vanishes && col < num_cols; ++col) {
-				bool equal = true;
-				for (auto &&level : part_levels) {
-					if (indexing[level[col - 1]] != indexing[level[col]]) {
-						equal = false;
-						break;
-					}
-				}
-				vanishes = vanishes || equal;
+			auto cols = std::views::iota(std::size_t(0), num_cols);
+			if (std::ranges::adjacent_find(cols, columns_equal) != std::ranges::end(cols)) {
+				// The indexing is left partially canonicalized; stop processing the remaining partitions.
+				phase = 0;
+				break;
 			}
 		}
 	}
 
-	return vanishes ? 0 : phase;
+	return phase;
 }
 
 } // namespace tpack
