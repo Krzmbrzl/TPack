@@ -56,7 +56,9 @@ static void BM_unrank(benchmark::State &state) {
 	std::random_device rnd_device;
 	std::mt19937_64 engine(rnd_device());
 	std::uniform_int_distribution< std::size_t > dist(0, 12);
-	const std::size_t rank = dist(engine);
+	// Keep the rank within range; unrank's precondition is rank < num_orbits, and smaller configurations
+	// have fewer orbits than the draw's upper bound.
+	const std::size_t rank = dist(engine) % tpack::num_orbits(dimensions, partitions);
 
 	std::vector< std::size_t > indexing(dimensions.size());
 

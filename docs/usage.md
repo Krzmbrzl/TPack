@@ -82,12 +82,13 @@ int main() {
 ### `num_orbits`
 
 ```
-std::size_t num_orbits(dims, partitions);
+std::size_t num_orbits(dims, partitions, signs = {});
 ```
 
 Returns how many distinct values the symmetric tensor has — exactly the size the packed storage needs. **Internally** it multiplies, over all
 partitions, the multiset coefficient `C(effective_dim + num_cols - 1, num_cols)`, where `effective_dim` is the product of the per-level dimensions and
-`num_cols` is the number of columns. This is the counting result derived in [Theory](theory.md#the-combinatorial-idea-combinatorial-numbers).
+`num_cols` is the number of columns. This is the counting result derived in [Theory](theory.md#the-combinatorial-idea-combinatorial-numbers). The
+optional `signs` argument selects antisymmetric partitions; see [Antisymmetric partitions](#antisymmetric-partitions).
 
 <!-- tpack-snippet: name=usage_num_orbits -->
 ```cpp
@@ -100,9 +101,9 @@ assert(tpack::num_orbits(dims, partitions) == 15);  // C(5 + 2 - 1, 2) = C(6, 2)
 ### `rank` / `unrank`
 
 ```
-std::size_t rank(idx, dims, parts);                 // canonical indexing -> packed offset
-Indexing    unrank(rank, dims, parts);              // packed offset -> canonical indexing
-void        unrank(idx, rank, dims, parts);         // write into a caller-provided buffer
+std::size_t rank(idx, dims, parts, signs = {});        // canonical indexing -> packed offset
+Indexing    unrank(rank, dims, parts, signs = {});     // packed offset -> canonical indexing
+void        unrank(idx, rank, dims, parts, signs = {});// write into a caller-provided buffer
 ```
 
 `rank` maps a **canonical** indexing to its packed storage offset in `[0, num_orbits(dims, parts))`; `unrank` is the exact inverse and always returns
@@ -135,19 +136,19 @@ thread-local allocation in hot loops; those overloads are `constexpr`.
 ### `is_canonical` / `next_orbit_representative`
 
 ```
-bool is_canonical(idx, partitions);
-bool next_orbit_representative(idx, parts, counters = nullptr);
+bool is_canonical(idx, partitions, signs = {});
+bool next_orbit_representative(idx, parts, signs = {}, phase = nullptr);
 ```
 
 `is_canonical` reports whether an indexing is the chosen representative for its orbit TPack chose for storage — namely one whose columns are
-non-increasing in reverse-lexicographic order within every partition.
+non-increasing in reverse-lexicographic order within every partition (strictly decreasing for antisymmetric partitions).
 
 `next_orbit_representative` walks the orbit: starting from any member, each call advances `idx` in place to the next member and returns `true`; the
 call that exhausts the orbit returns `false` and restores `idx` to the canonical representative. It is the tool for _scattering_ a packed value to all
 the dense positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use
 `canonicalize`.
 
-<!-- tpack-snippet: name=usage_enumerate -->
+<!-- tpack-snippet: name=usage_enumerate headers="iostream" -->
 ```cpp
 std::vector<std::size_t> dims = {4, 4, 4};
 std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1, 2}}};
@@ -162,14 +163,16 @@ do {
 
 assert(members == 6);                            // 3! distinct permutations
 assert((idx == std::vector<std::size_t>{2, 1, 0}));  // restored to canonical
+std::cout << "Number of members: " << members << "\n";
 ```
 
-The optional `counters` argument (one counter per partition) is not needed for symmetric packing; see the API reference for its meaning.
+The optional `signs` and `phase` arguments track the antisymmetric sign while enumerating; they are not needed for symmetric packing. See
+[Antisymmetric partitions](#antisymmetric-partitions).
 
 ### `orbit_size`
 
 ```
-std::size_t orbit_size(idx, partitions, indexing_canonical = false);
+std::size_t orbit_size(idx, partitions, indexing_canonical = false, signs = {});
 ```
 
 `orbit_size` returns how many indexings share the orbit of `idx` — i.e. how many dense positions a single packed value expands to, which is exactly the
@@ -191,12 +194,13 @@ assert(tpack::orbit_size(repeated, partitions) == 3); // 3! / 2!
 ### `canonicalize`
 
 ```
-void canonicalize(idx, partitions);
+int canonicalize(idx, partitions, signs = {});
 ```
 
 `canonicalize` rewrites `idx` in place into the canonical representative of its orbit by sorting the columns of every partition into non-increasing
 reverse-lexicographic order. After it returns, `is_canonical(idx, partitions)` holds, and any two members of the same orbit are mapped to the same
-indexing. This is the direct way to put an arbitrary indexing into the form `rank` requires.
+indexing. This is the direct way to put an arbitrary indexing into the form `rank` requires. The returned `int` is the antisymmetric phase relating the
+input to the canonical representative (`+1` for symmetric packing); see [Antisymmetric partitions](#antisymmetric-partitions).
 
 <!-- tpack-snippet: name=usage_canonicalize -->
 ```cpp
@@ -218,14 +222,14 @@ assert(tpack::rank(idx, dims, partitions) < tpack::num_orbits(dims, partitions))
 ### `sort_partition_col_major` / `sort_partition_row_major`
 
 ```
-void sort_partition_col_major(partitions);
-void sort_partition_row_major(partitions);
+void sort_partition_col_major(partitions, signs = {});
+void sort_partition_row_major(partitions, signs = {});
 ```
 
 These sort the way a partition is expressed so that accessing the represented tensor (during read or write) happens in accordance with its storage
 order (as far as possible, that is). As a side-effect, they normalise a partition specification in place so that specifications describing the same
 symmetry become identical, which keeps the `rank`/`unrank` layout stable regardless of the order the caller happened to list indices, levels and
-partitions in.
+partitions in. If a `signs` array is passed it is reordered in lockstep with the partitions, so each partition keeps its antisymmetry flag.
 
 <!-- tpack-snippet: name=usage_sort_partition -->
 ```cpp
@@ -236,5 +240,46 @@ std::vector<std::vector<std::vector<std::size_t>>> b = {{{1, 0}}};
 tpack::sort_partition_col_major(a);
 tpack::sort_partition_col_major(b);
 assert(a == b);
+```
+
+## Antisymmetric partitions
+
+By default every partition is *symmetric*: permuting its columns leaves the tensor value unchanged. A partition can instead be *antisymmetric*, where
+permuting its columns multiplies the value by the sign (parity) of the permutation — the behaviour of a Slater determinant or a wedge product. Since a
+partition is a whole symmetric group acting on its columns, antisymmetry is a property of the partition as a whole.
+
+Antisymmetry is passed via the trailing `signs` argument that every function accepts: a range with one `tpack::Symmetry` per partition
+(`Symmetry::Antisymm` or `Symmetry::Symm`). A single `Symmetry` may be passed instead to apply it to every partition, and the enumerators convert
+implicitly from the integer sign of a permutation (`+1` = symmetric, `-1` = antisymmetric), so `{-1}` is accepted too. A range-valued `signs` must have
+exactly one entry per partition. Omitting the argument means all partitions are symmetric, so existing code is unaffected. Two things change for an
+antisymmetric partition:
+
+- **Vanishing.** If two of its columns are equal, the element is forced to zero and is not stored. Its canonical representatives are therefore the
+  *strictly* decreasing column tuples, and `num_orbits`/`rank`/`unrank` count and address them *without repetition* (`C(d, k)` instead of
+  `C(d + k - 1, k)`). `orbit_size` reports `0` for a vanishing indexing.
+- **Phase.** An arbitrary indexing equals `(-1)^p` times its canonical representative. `canonicalize` returns that phase — `+1`, `-1`, or `0` when the
+  element vanishes — and `next_orbit_representative` keeps a running `phase` (initialise it to `+1` at the canonical representative). `rank` itself
+  needs no phase: canonicalise first, keep the returned sign, then rank the canonical indexing.
+
+<!-- tpack-snippet: name=usage_antisymmetric headers="iostream" -->
+```cpp
+std::vector<std::size_t> dims = {4, 4};
+std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
+std::vector<tpack::Symmetry> signs = {tpack::Symmetry::Antisymm};  // the pair is antisymmetric
+
+// Antisymmetric pairs store only the strictly-decreasing tuples: C(4, 2) = 6.
+assert(tpack::num_orbits(dims, partitions, signs) == 6);
+
+// Swapping the columns flips the sign; the canonical form is the descending order.
+std::vector<std::size_t> idx = {1, 3};                   // ascending -> one transposition
+int phase = tpack::canonicalize(idx, partitions, signs);
+assert((idx == std::vector<std::size_t>{3, 1}));
+assert(phase == -1);
+std::cout << "phase relating {1, 3} to its canonical form: " << phase << '\n';
+
+// Equal columns vanish.
+std::vector<std::size_t> diag = {2, 2};
+assert(tpack::canonicalize(diag, partitions, signs) == 0);
+assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, false, signs) == 0);
 ```
 

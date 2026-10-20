@@ -4,6 +4,7 @@
 
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
+#include <tpack/details/symmetry.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -28,22 +29,35 @@ namespace tpack {
  * @f$\binom{\text{effective\_dim} + \text{num\_cols} - 1}{\text{num\_cols}}@f$ representatives per partition.
  * The total number of orbits is the product across all partitions.
  *
+ * An antisymmetric partition instead requires its columns to be strictly decreasing, so its representatives
+ * are @c num_cols -combinations @e without repetition, @f$\binom{\text{effective\_dim}}{\text{num\_cols}}@f$
+ * (zero when there are fewer values than columns).
+ *
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param dims The dimension (extent) of every index of the tensor.
  * @param partitions The symmetry partitions acting on the tensor's indices.
- * @return The number of orbits, i.e. the number of entries required to store the symmetric tensor.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
+ * @return The number of orbits, i.e. the number of entries required to store the (anti)symmetric tensor.
  *
  * @pre Within every level of a partition, all referenced indices share the same dimension.
  * @see rank, unrank
  */
-template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions >
-constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
+template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+		  details::signs_spec Signs = details::all_symmetric_t >
+constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
+								 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
 
-	std::size_t num = 1;
+	details::assert_signs_match(signs, partitions);
+
+	std::size_t num        = 1;
+	std::size_t part_index = 0;
 
 	for (auto &&part : partitions) {
 		// Effective (combined) dimension of the tuple of indices making up the current partition
@@ -52,9 +66,8 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions) {
 							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
 		const std::size_t part_size = size(*begin(part));
 
-		// Non-redundant part of the current partition is the number of part_size-combinations
-		// of effective_dim elements with repetition.
-		num *= details::binomial(effective_dim + part_size - 1, part_size);
+		num *= details::partition_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
+		++part_index;
 	}
 
 	return num;
@@ -118,44 +131,45 @@ namespace details {
  * last partition vary fastest; when a partition exhausts its permutations the enumeration carries over into
  * the next one, so the partitions behave like digits of a mixed-radix counter.
  *
+ * When a @p phase pointer is supplied, the running antisymmetric sign is maintained in @c *phase: on each
+ * advance it is multiplied by the parity of the column permutation applied to the antisymmetric partitions,
+ * so @c *phase always equals @c (-1) raised to the number of column transpositions (over all antisymmetric
+ * partitions) separating @p idx from the canonical representative. The caller must initialise @c *phase to
+ * that value before the first call; starting the enumeration at the canonical representative, that value is
+ * @c +1. Symmetric partitions never contribute a sign.
+ *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Counters A range of per-partition counters (defaults to @c std::vector<std::size_t>).
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx [in,out] The indexing to advance in place.
  * @param parts The symmetry partitions.
- * @param counters Optional pointer to one counter per partition. When supplied and zero-initialised for the
- *        canonical representative, @c counters[i] always equals the number of adjacent column transpositions
- *        of partition @c i separating @p idx from the canonical representative, repeated columns included.
- *        This parity/count information is useful for antisymmetric tensors, where it fixes the sign.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
+ * @param phase [in,out] Optional pointer to the running antisymmetric sign (@c +1 or @c -1). When supplied it
+ *        must be initialised to the sign of @p idx relative to canonical before the first call (@c +1 when
+ *        starting from the canonical representative); it is updated in step with @p idx.
  * @return @c true if @p idx was advanced to a further representative, @c false once the orbit is exhausted
  *         (in which case @p idx has been reset to the canonical representative).
  *
- * @pre If @p counters is non-null it must hold exactly one element per partition.
  * @see is_canonical
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  std::ranges::range Counters = std::vector< std::size_t > >
-constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Counters *counters = nullptr) {
-	using std::ranges::begin;
-	using std::ranges::end;
-	using std::ranges::rbegin;
-	using std::ranges::rend;
-	using std::ranges::size;
+		  details::signs_spec Signs = details::all_symmetric_t >
+constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
+										 const Signs &signs = details::all_symmetric, int *phase = nullptr) {
+	details::assert_signs_match(signs, parts);
 
-	assert(!counters || std::ranges::distance(*counters) == std::ranges::distance(parts));
-
-	std::remove_cvref_t< decltype(rbegin(*counters)) > counter_it;
-	if (counters) {
-		counter_it = rbegin(*counters);
-	}
+	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
 
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+		--part_index;
+		const bool antisym = details::antisymmetric_at(signs, part_index);
+
 		details::LevelColumnsIndexingView columns(part_levels, idx);
 
-		if (counters) {
-			assert(counter_it != rend(*counters));
-			*counter_it += details::next_permutation_inversion_delta(columns);
-			++counter_it;
+		if (phase && antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
+			*phase = -*phase;
 		}
 
 		auto [_, has_more] = std::ranges::next_permutation(columns, std::greater<>{});
@@ -172,23 +186,39 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts, Cou
 /**
  * @brief Compute the number of elements that lie in the same orbit as the provided indexing
  *
+ * For an antisymmetric partition any two equal columns make the element vanish (an odd transposition lies in
+ * its stabiliser), so such an orbit is reported as size @c 0; otherwise its columns are distinct and the orbit
+ * has the full @c num_cols! members.
+ *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx The reference indexing
  * @param parts The symmetry partitions.
  * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
- * @return Number of elements in the respective orbit
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
+ * @return Number of elements in the respective orbit, or @c 0 if the element vanishes by antisymmetry.
  *
  * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
-constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false) {
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
+		  details::signs_spec Signs = details::all_symmetric_t >
+constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false,
+								 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
 
-	std::size_t orb_size = 1;
+	details::assert_signs_match(signs, parts);
+
+	std::size_t orb_size   = 1;
+	std::size_t part_index = 0;
 
 	for (auto &&part_levels : parts) {
+		const bool antisym = details::antisymmetric_at(signs, part_index);
+		++part_index;
+
 		details::LevelColumnsIndexingView columns(part_levels, idx);
 
 		const std::size_t num_cols = size(*begin(part_levels));
@@ -212,6 +242,12 @@ constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexi
 			while (i + 1 < num_cols && columns[order[i]] == columns[order[i + 1]]) {
 				++i;
 				++repeats;
+			}
+
+			// Equal columns in an antisymmetric partition put a transposition in the stabiliser, so the element
+			// vanishes and its orbit holds no distinct representatives.
+			if (antisym && repeats >= 2) {
+				return 0;
 			}
 
 			placed += repeats;

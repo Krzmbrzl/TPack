@@ -12,6 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-26.04, windows-2025, macos-26]
+        build_type: [Debug, Release]
 
     runs-on: ${{ matrix.os }}
 
@@ -25,7 +26,7 @@ jobs:
 
       - name: Configure
         shell: bash
-        run: cmake -G Ninja -B build -S .
+        run: cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build
         shell: bash
@@ -34,6 +35,12 @@ jobs:
       - name: Test
         shell: bash
         run: cd build && ctest -R '^TPack' --output-on-failure
+
+      - name: Exercise benchmarks
+        shell: bash
+        # Run every benchmark once (--benchmark_dry_run) so they keep compiling and executing without
+        # spending CI time on actual measurements.
+        run: ./build/benchmarks/tensor_packing_benchmarks --benchmark_dry_run
 
       - name: Install
         shell: bash

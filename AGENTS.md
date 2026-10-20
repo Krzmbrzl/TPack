@@ -102,3 +102,10 @@ clang-format -i <files>                   # fix
 Different clang-format major versions can disagree; if running it produces
 changes to lines you did not touch, revert those and only keep the formatting
 of your own changes.
+
+## Building
+
+When configuring CMake, pass `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` to create the
+`compile_commands.json` file that tools like `clangd` need. It is created in the
+directory in which CMake was invoked. If you didn't invoke CMake from the repository's
+root, symlink this file to the repo root so tools can find it.

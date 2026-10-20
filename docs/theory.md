@@ -18,12 +18,14 @@ every element.
 Full permutational symmetry makes the representative and counting problem purely combinatorial:
 
 - **Fully symmetric** — every permutation of the group's indices is a symmetry, and the value is unchanged. The acting group is all of `S_n`.
+- **Fully antisymmetric** — every permutation is again a symmetry of the *magnitude*, but the value picks up the permutation's sign. The acting group
+  is still all of `S_n`, now acting with a sign (see [Antisymmetry](#antisymmetry)).
 
-For anything less than total symmetry — so-called *mixed symmetry*, described by [Young tableaux](https://en.wikipedia.org/wiki/Young_tableau) and the
-[representation theory of the symmetric group](https://en.wikipedia.org/wiki/Representation_theory_of_the_symmetric_group) — the orbit structure is
-not a simple counting problem, and the closed-form addressing scheme below no longer applies. **This is why TPack only supports fully symmetric
-partitions.** Each partition in the API is one independent fully symmetric group acting on its own columns; different partitions act on disjoint index
-sets, so their effects simply multiply.
+For anything less than total (anti)symmetry — so-called *mixed symmetry*, described by [Young tableaux](https://en.wikipedia.org/wiki/Young_tableau)
+and the [representation theory of the symmetric group](https://en.wikipedia.org/wiki/Representation_theory_of_the_symmetric_group) — the orbit
+structure is not a simple counting problem, and the closed-form addressing scheme below no longer applies. **This is why TPack only supports fully
+symmetric or antisymmetric partitions.** Each partition in the API is one independent fully symmetric group acting on its own columns; different
+partitions act on disjoint index sets, so their effects simply multiply.
 
 ## The combinatorial idea: combinatorial numbers
 
@@ -56,13 +58,27 @@ binomial coefficient that does not exceed the remaining rank. This is exactly wh
 [`unrank`](usage.md#rank--unrank) do per partition, combining the independent partitions with a mixed-radix stride. No table of representatives is
 ever materialised — the addressing is computed directly from the binomial coefficients, which is what makes the scheme fast and allocation-light.
 
+## Antisymmetry
+
+A partition can instead be **antisymmetric**: permuting its columns multiplies the tensor value by the *sign* of the permutation. The acting group is
+still the full symmetric group `S_k`, but it now acts on the value with a sign, as for a [Slater determinant](https://en.wikipedia.org/wiki/Slater_determinant)
+or an [exterior (wedge) product](https://en.wikipedia.org/wiki/Exterior_algebra). Two things follow:
+
+- Any permutation that fixes the indexing (a repeated column gives a transposition that does) is an *odd* symmetry of a would-be non-zero value, which
+  is only consistent with the value being **zero**. So indexings with a repeated column vanish and are not stored.
+- The surviving representatives are the **strictly decreasing** column tuples. Counting and addressing them is the same combinatorial-number system,
+  only *without repetition*: the orbit count per partition becomes `C(d, k)` and the rank is `sum_i C(x_i, k - i)`.
+
+Everything else is unchanged; a per-partition flag selects antisymmetric partitions, and the only extra output is the sign (phase) relating an
+arbitrary indexing to its canonical representative. See the [Usage](usage.md#antisymmetric-partitions) page.
+
 ## Why this saves memory
 
 Consider a rank-4 tensor with two independent symmetric index pairs, each index ranging over dimension 10. Naively it has `10^4 = 10000` entries, but
 each symmetric pair only has `C(10 + 2 - 1, 2) = C(11, 2) = 55` distinct values, so the packed tensor needs `55 * 55 = 3025` — under a third of the
 dense size, and the saving compounds with tensor rank and symmetry.
 
-<!-- tpack-snippet: name=theory_packed_vs_dense -->
+<!-- tpack-snippet: name=theory_packed_vs_dense headers="iostream" -->
 ```cpp
 // A rank-4 tensor with two symmetric pairs (0,1) and (2,3), each index of dim 10.
 std::vector<std::size_t> dims = {10, 10, 10, 10};
@@ -73,6 +89,8 @@ std::size_t packed = tpack::num_orbits(dims, partitions);
 
 assert(packed == 55 * 55);                         // C(11,2)^2 = 3025
 assert(packed < dense);
+
+std::cout << "dense: " << dense << ", packed: " << packed << '\n';
 ```
 
 See the [Usage](usage.md) page for how to turn this counting result into actual packed storage and back.

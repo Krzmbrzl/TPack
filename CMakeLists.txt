@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24...4.3)
 
 project(TensorPacking
 	LANGUAGES CXX
-	VERSION 1.0.0
+	VERSION 2.0.0
 )
 
 add_library(tensor_packing INTERFACE)
@@ -12,9 +12,11 @@ set_target_properties(tensor_packing PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 target_sources(tensor_packing
 	PUBLIC FILE_SET tpack_header TYPE HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/include"
 	FILES
+		"include/tpack/details/apply_permutation.hpp"
 		"include/tpack/details/binomial.hpp"
 		"include/tpack/details/factorial.hpp"
 		"include/tpack/details/level_columns_view.hpp"
+		"include/tpack/details/symmetry.hpp"
 		"include/tpack/orbit.hpp"
 		"include/tpack/partition.hpp"
 		"include/tpack/rank.hpp"

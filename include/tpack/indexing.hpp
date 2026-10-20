@@ -2,6 +2,10 @@
 
 #pragma once
 
+#include <tpack/details/apply_permutation.hpp>
+#include <tpack/details/level_columns_view.hpp>
+#include <tpack/details/symmetry.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <numeric>
@@ -18,31 +22,50 @@ namespace tpack {
  * levels only break ties. Each partition is checked independently; there is no ordering requirement between
  * different partitions.
  *
+ * An antisymmetric partition is canonical only when its columns are @e strictly decreasing: two equal columns
+ * make the element vanish, so they are not a canonical representative.
+ *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param indexing The indexing to test.
  * @param partitions The symmetry partitions.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return @c true if @p indexing is canonical, @c false otherwise.
  *
  * @see canonicalize, next_orbit_representative, rank
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
-constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
+		  details::signs_spec Signs = details::all_symmetric_t >
+constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions, const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
 
-	for (auto &&part_levels : partitions) {
-		const std::size_t num_cols = size(*begin(part_levels));
+	details::assert_signs_match(signs, partitions);
 
-		// Columns (compared in reverse lexicographic order) have to be non-increasing
+	std::size_t part_index = 0;
+	for (auto &&part_levels : partitions) {
+		const bool antisym         = details::antisymmetric_at(signs, part_index);
+		const std::size_t num_cols = size(*begin(part_levels));
+		++part_index;
+
+		// Columns (compared in reverse lexicographic order) have to be non-increasing, and strictly decreasing
+		// for an antisymmetric partition.
 		for (std::size_t col = 1; col < num_cols; ++col) {
+			bool strictly_greater = false;
 			for (auto &&level : std::ranges::views::reverse(part_levels)) {
 				if (indexing[level[col - 1]] < indexing[level[col]]) {
 					return false;
 				}
 				if (indexing[level[col - 1]] > indexing[level[col]]) {
+					strictly_greater = true;
 					break;
 				}
+			}
+			if (antisym && !strictly_greater) {
+				return false;
 			}
 		}
 	}
@@ -51,27 +74,46 @@ constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions) {
 }
 
 /**
- * @brief Canonicalizes the given indexing
+ * @brief Canonicalizes the given indexing and reports the antisymmetric phase.
  *
  * An indexing is canonical when, in every partition, the columns are in non-increasing order. Columns are
  * compared in reverse-lexicographic order: the last (most significant) level decides first, and earlier
  * levels only break ties. Each partition is checked independently; there is no ordering requirement between
  * different partitions.
  *
+ * The return value is the phase relating the input to its canonical representative: @c +1 or @c -1 according
+ * to the parity of the permutation that sorts the antisymmetric partitions (symmetric partitions never
+ * contribute a sign), or @c 0 if the element vanishes because some antisymmetric partition has two equal
+ * columns. On a non-vanishing result the indexing is brought into canonical form; when the element vanishes
+ * (@c 0) the indexing is left in an unspecified state.
+ *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @param indexing The indexing to test.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
+ * @param indexing The indexing to canonicalize in place.
  * @param partitions The symmetry partitions.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
+ * @return The phase @c +1, @c -1 or @c 0 (vanishing) relating the input to its canonical representative.
  *
  * @see is_canonical
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
-constexpr void canonicalize(Indexing &indexing, Partitions &&partitions) {
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
+		  details::signs_spec Signs = details::all_symmetric_t >
+constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
 
+	details::assert_signs_match(signs, partitions);
+
+	int phase              = 1;
+	std::size_t part_index = 0;
+
 	for (auto &&part_levels : partitions) {
+		const bool antisym         = details::antisymmetric_at(signs, part_index);
 		const std::size_t num_cols = size(*begin(part_levels));
+		++part_index;
 
 		auto cmp = [&](std::size_t lhs, std::size_t rhs) {
 			for (auto &&level : std::ranges::views::reverse(part_levels)) {
@@ -88,28 +130,31 @@ constexpr void canonicalize(Indexing &indexing, Partitions &&partitions) {
 
 		std::ranges::sort(order, cmp);
 
-		// Apply determined order to indexing (in-place)
-		// cmp.: https://stackoverflow.com/a/838789
-		for (std::size_t i = 0; i < num_cols - 1; ++i) {
-			if (i == order[i]) {
-				continue;
+		// Apply the determined order to the columns in place; the swap count gives the permutation's parity.
+		details::LevelColumnsIndexingView columns(part_levels, indexing);
+		const std::size_t transpositions = details::apply_permutation(order, columns);
+
+		if (antisym) {
+			if (transpositions % 2 != 0) {
+				phase = -phase;
 			}
 
-			std::size_t k = 0;
-			for (k = i + 1; k < num_cols; ++k) {
-				if (order[k] == i) {
-					break;
-				}
-			}
+			auto columns_equal = [&](std::size_t lhs, std::size_t rhs) {
+				return std::ranges::all_of(part_levels,
+										   [&](auto &&level) { return indexing[level[lhs]] == indexing[level[rhs]]; });
+			};
 
-			// Swap whole columns
-			for (auto &&level : part_levels) {
-				std::swap(indexing[level[i]], indexing[level[order[i]]]);
+			// After sorting, equal columns are adjacent; any such pair makes the element vanish.
+			auto cols = std::views::iota(std::size_t(0), num_cols);
+			if (std::ranges::adjacent_find(cols, columns_equal) != std::ranges::end(cols)) {
+				// The indexing is left partially canonicalized; stop processing the remaining partitions.
+				phase = 0;
+				break;
 			}
-
-			std::swap(order[i], order[k]);
 		}
 	}
+
+	return phase;
 }
 
 } // namespace tpack
