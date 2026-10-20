@@ -21,6 +21,7 @@ target_sources(tensor_packing
 		"include/tpack/orbit.hpp"
 		"include/tpack/partition.hpp"
 		"include/tpack/rank.hpp"
+		"include/tpack/sector_layout.hpp"
 )
 
 add_library(TPack::TPack ALIAS tensor_packing)
