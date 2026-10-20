@@ -260,7 +260,7 @@ antisymmetric partition:
   element vanishes — and `next_orbit_representative` keeps a running `phase` (initialise it to `+1` at the canonical representative). `rank` itself
   needs no phase: canonicalise first, keep the returned sign, then rank the canonical indexing.
 
-<!-- tpack-snippet: name=usage_antisymmetric -->
+<!-- tpack-snippet: name=usage_antisymmetric headers="iostream" -->
 ```cpp
 std::vector<std::size_t> dims = {4, 4};
 std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
@@ -274,6 +274,7 @@ std::vector<std::size_t> idx = {1, 3};                   // ascending -> one tra
 int phase = tpack::canonicalize(idx, partitions, signs);
 assert((idx == std::vector<std::size_t>{3, 1}));
 assert(phase == -1);
+std::cout << "phase relating {1, 3} to its canonical form: " << phase << '\n';
 
 // Equal columns vanish.
 std::vector<std::size_t> diag = {2, 2};

@@ -78,7 +78,7 @@ Consider a rank-4 tensor with two independent symmetric index pairs, each index 
 each symmetric pair only has `C(10 + 2 - 1, 2) = C(11, 2) = 55` distinct values, so the packed tensor needs `55 * 55 = 3025` — under a third of the
 dense size, and the saving compounds with tensor rank and symmetry.
 
-<!-- tpack-snippet: name=theory_packed_vs_dense -->
+<!-- tpack-snippet: name=theory_packed_vs_dense headers="iostream" -->
 ```cpp
 // A rank-4 tensor with two symmetric pairs (0,1) and (2,3), each index of dim 10.
 std::vector<std::size_t> dims = {10, 10, 10, 10};
@@ -89,6 +89,8 @@ std::size_t packed = tpack::num_orbits(dims, partitions);
 
 assert(packed == 55 * 55);                         // C(11,2)^2 = 3025
 assert(packed < dense);
+
+std::cout << "dense: " << dense << ", packed: " << packed << '\n';
 ```
 
 See the [Usage](usage.md) page for how to turn this counting result into actual packed storage and back.
