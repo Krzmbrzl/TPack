@@ -94,3 +94,34 @@ std::cout << "dense: " << dense << ", packed: " << packed << '\n';
 ```
 
 See the [Usage](usage.md) page for how to turn this counting result into actual packed storage and back.
+
+## Labelled tensors and sectors
+
+Tensors with abelian point-group symmetry carry, on every index, an irrep *label* in addition to a *local* index
+within that label; TPack represents the pair as `Labeled<Label>`. Two things change relative to the flat case.
+
+First, a group *selection rule*: the group product — for a point group, the XOR of the irrep bitmasks — of all the
+indices' labels must equal a fixed target, or the entry is structurally zero. Only a sparse subset of label tuples
+carries any data.
+
+Second, the symmetry permutes the whole `(label, local)` pairs. The canonical representatives therefore fall into
+**sectors**: one per label assignment that satisfies the rule and is canonical under the ordinary (symmetric)
+column ordering. Storage is the concatenation of the sectors, each a contiguous block — exactly what
+[`SectorLayout`](usage.md#labeled-sector-graded-packing) precomputes.
+
+Within a sector every label is fixed, so the problem collapses back to the flat one. The local index of each slot
+ranges over a plain integer dimension, and each partition splits into runs of equal-label columns — the
+[Young subgroup](https://en.wikipedia.org/wiki/Young_subgroup) of column permutations that preserve the labels.
+Each run is an ordinary (anti)symmetric partition over the locals, counted and addressed by exactly the
+combinatorial-number machinery above. A sector's size is thus the product, over the partitions and their
+equal-label runs, of the per-partition counts, and the layout's total size is the sum over the allowed sectors. No
+new combinatorics are introduced; only the outer "which sector" layer is.
+
+Because the whole point of the grading is that each sector is a contiguous block, the canonical ordering is
+**sector-major** — labels first, then locals — rather than the per-level interleaving of label and local that the
+flat `is_canonical` uses. The two agree exactly when every partition has a single level. Antisymmetry still acts
+only through the local runs: two columns that share a label but differ in local index are distinct, and only equal
+`(label, local)` columns vanish.
+
+As in the flat case, this closed-form addressing covers only fully symmetric or antisymmetric partitions; mixed
+(Young-tableau) symmetry remains out of scope.

@@ -283,3 +283,76 @@ assert(tpack::canonicalize(diag, partitions, signs) == 0);
 assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, false, signs) == 0);
 ```
 
+## Labeled (sector-graded) packing
+
+Tensors with abelian point-group symmetry store each index not as a flat integer but as a `tpack::Labeled<Label>`
+value: a symmetry label (e.g. an irrep) together with a local index enumerating the states that share that label.
+A group *selection rule* means only label tuples whose group product equals a target survive; the rest of the
+tensor is structurally zero. See the [Theory](theory.md#labelled-tensors-and-sectors) page for the background.
+
+`tpack::SectorLayout<Label>` packs exactly the surviving entries. It groups storage into *sectors* — one contiguous
+block per allowed, canonical label assignment — and maps a canonical labelled indexing to and from a contiguous
+rank in `[0, size())`. Within a sector every index's label is fixed, so what remains is the ordinary integer
+packing of the local indices, which it delegates to [`num_orbits`/`rank`/`unrank`](#the-public-functions).
+
+It is constructed from per-slot `label -> count` dimensions (any range of `{label, count}` pairs; labels absent
+from a slot simply do not occur there), the usual partitions and `signs`, and a
+`tpack::Constraint{combine, identity, target}` describing the group product.
+
+<!-- tpack-snippet: name=usage_labeled mode=program -->
+```cpp
+#include <tpack/labeled.hpp>
+#include <tpack/sector_layout.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <map>
+#include <vector>
+
+int main() {
+	using Label = int;
+
+	// Two indices, each carrying labels {0, 1} with two local values per label.
+	const std::vector<std::map<Label, std::size_t>> dims = {
+		{{0, 2}, {1, 2}},
+		{{0, 2}, {1, 2}},
+	};
+	// The two indices form one symmetric pair.
+	const std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
+
+	// Abelian selection rule: the XOR of the two labels must be 0 (the totally symmetric irrep).
+	const auto xor_combine = [](Label a, Label b) { return a ^ b; };
+	const tpack::SectorLayout<Label> layout(dims, partitions,
+											tpack::Constraint{xor_combine, /*identity=*/0, /*target=*/0});
+
+	// Only the label-diagonal sectors (0, 0) and (1, 1) satisfy the rule; each is a symmetric pair over two
+	// locals, C(3, 2) = 3 entries, so the packed size is 6.
+	assert(layout.size() == 6);
+	assert(layout.sectors().size() == 2);
+
+	// The sectors tile the storage contiguously.
+	std::size_t offset = 0;
+	for (const auto &sector : layout.sectors()) {
+		assert(sector.offset == offset);
+		offset += sector.size;
+	}
+	assert(offset == layout.size());
+
+	// rank and unrank are exact inverses over [0, size()), and every unranked indexing is canonical.
+	for (std::size_t r = 0; r < layout.size(); ++r) {
+		const std::vector<tpack::Labeled<Label>> idx = layout.unrank(r);
+		assert(layout.is_canonical(idx));
+		assert(layout.rank(idx) == r);
+	}
+
+	return 0;
+}
+```
+
+`sectors()` exposes each block's `{labels, offset, size}` for block-wise processing. The canonical form is
+*sector-major* (labels are the major sort key, so each sector stays contiguous); for single-level partitions it
+coincides with [`is_canonical`](#is_canonical--next_orbit_representative), but for multi-level partitions it
+differs, so test and canonicalise labelled indexings against `SectorLayout::is_canonical`. Antisymmetry acts within
+a sector, on the locals of equal-label column runs: two columns sharing a label but differing in local index are
+distinct, and only equal `(label, local)` columns vanish.
+
