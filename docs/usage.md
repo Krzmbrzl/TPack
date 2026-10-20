@@ -148,7 +148,7 @@ call that exhausts the orbit returns `false` and restores `idx` to the canonical
 the dense positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use
 `canonicalize`.
 
-<!-- tpack-snippet: name=usage_enumerate -->
+<!-- tpack-snippet: name=usage_enumerate headers="iostream" -->
 ```cpp
 std::vector<std::size_t> dims = {4, 4, 4};
 std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1, 2}}};
@@ -163,6 +163,7 @@ do {
 
 assert(members == 6);                            // 3! distinct permutations
 assert((idx == std::vector<std::size_t>{2, 1, 0}));  // restored to canonical
+std::cout << "Number of members: " << members << "\n";
 ```
 
 The optional `signs` and `phase` arguments track the antisymmetric sign while enumerating; they are not needed for symmetric packing. See
