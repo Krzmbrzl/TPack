@@ -68,13 +68,15 @@ namespace details {
  * @tparam EffectiveIndexing A random-access range used as scratch space for the collapsed index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx The canonical indexing to rank.
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
  * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
  *        columns. Its contents are overwritten and carry no meaning on return.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return The rank of @p idx in @c [0, num_orbits(dims, parts, signs)).
  *
  * @pre @p idx is canonical (see is_canonical) and @c size(idx) == size(dims).
@@ -83,8 +85,8 @@ namespace details {
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
-requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) constexpr std::size_t
+		  details::signs_spec Signs = details::all_symmetric_t >
+requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) constexpr std::size_t
 	rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
 		 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
@@ -93,6 +95,7 @@ requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) const
 
 	std::size_t rank = 0;
 
+	details::assert_signs_match(signs, parts);
 	assert(is_canonical(idx, parts, signs));
 	assert(size(idx) == size(dims));
 
@@ -163,18 +166,20 @@ requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) const
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx The canonical indexing to rank.
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return The rank of @p idx in @c [0, num_orbits(dims, parts, signs)).
  *
  * @pre @p idx is canonical (see is_canonical) and @c size(idx) == size(dims).
  * @see unrank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+		  std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
 std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
@@ -206,14 +211,16 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Si
  * @tparam EffectiveIndexing A random-access range used as scratch space for the collapsed index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx [out] Overwritten with the reconstructed canonical indexing.
  * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
  * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
  *        columns. Its contents are overwritten and carry no meaning on return.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  *
  * @pre @c size(idx) == size(dims).
  * @pre Within every level of a partition, all indices share the same dimension.
@@ -222,14 +229,15 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Si
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
-requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) constexpr void unrank(
+		  details::signs_spec Signs = details::all_symmetric_t >
+requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) constexpr void unrank(
 	Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
 	const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
 
+	details::assert_signs_match(signs, parts);
 	assert(size(idx) == size(dims));
 
 	std::ranges::fill(idx, 0);
@@ -363,19 +371,21 @@ requires(!details::sign_range< std::remove_cvref_t< EffectiveIndexing > >) const
  * @tparam Indexing A random-access range receiving one index value per tensor index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx [out] Overwritten with the reconstructed canonical indexing.
  * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  *
  * @pre @c size(idx) == size(dims).
  * @post is_canonical(idx, parts, signs) holds.
  * @see rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+		  std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
 void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts,
 			const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
@@ -396,11 +406,13 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
  * @tparam Indexing The container type to allocate and return (default @c std::vector<std::size_t>).
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return The reconstructed canonical indexing, sized to @c size(dims).
  *
  * @post is_canonical(return value, parts, signs) holds.
@@ -408,7 +420,7 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
  */
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
+		  details::signs_spec Signs = details::all_symmetric_t >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
 	using std::ranges::size;
 

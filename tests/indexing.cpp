@@ -78,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(TPack, AntisymmetricCanonicalizePhase) {
 	const util::PartitionList parts{ { { 0, 1, 2 } } };
-	const std::vector< bool > anti{ true };
+	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	// Already canonical (strictly decreasing) -> phase +1
 	std::vector< std::size_t > a{ 2, 1, 0 };
@@ -107,7 +107,7 @@ TEST(TPack, AntisymmetricCanonicalizePhase) {
 
 TEST(TPack, AntisymmetricIsCanonical) {
 	const util::PartitionList parts{ { { 0, 1 } } };
-	const std::vector< bool > anti{ true };
+	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	EXPECT_TRUE(is_canonical(std::vector< std::size_t >{ 2, 1 }, parts, anti));
 	EXPECT_FALSE(is_canonical(std::vector< std::size_t >{ 1, 2 }, parts, anti));

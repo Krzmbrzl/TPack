@@ -147,7 +147,7 @@ TEST_P(OrbitTranspositionTest, next_orbit_representative) {
 
 	// Treat every partition as antisymmetric so the tracked phase is the parity of the column permutations of
 	// all partitions combined, i.e. (-1) raised to the total number of column inversions.
-	const std::vector< bool > signs(info.partitions.size(), true);
+	const std::vector< Symmetry > signs(info.partitions.size(), Symmetry::Antisymm);
 
 	int phase     = 1;
 	bool has_more = false;
@@ -304,18 +304,32 @@ TEST(TPack, AntisymmetricOrbitCount) {
 	const util::Dimensions dims{ 4, 4 };
 	const util::PartitionList parts{ { { 0, 1 } } };
 
-	EXPECT_EQ(num_orbits(dims, parts, std::vector< bool >{ true }), 6u);   // C(4, 2)
-	EXPECT_EQ(num_orbits(dims, parts, std::vector< bool >{ false }), 10u); // C(5, 2)
+	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm }), 6u); // C(4, 2)
+	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Symm }), 10u);    // C(5, 2)
 
 	// Fewer distinct values than columns -> no antisymmetric representatives exist
-	EXPECT_EQ(
-		num_orbits(util::Dimensions{ 2, 2, 2 }, util::PartitionList{ { { 0, 1, 2 } } }, std::vector< bool >{ true }),
-		0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 2, 2, 2 }, util::PartitionList{ { { 0, 1, 2 } } },
+						 std::vector< Symmetry >{ Symmetry::Antisymm }),
+			  0u);
+}
+
+TEST(TPack, SignSpecScalarAndIntForms) {
+	const util::Dimensions dims{ 4, 4, 3, 3 };
+	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+
+	// A single Symmetry applies to every partition, matching an all-antisymmetric range.
+	EXPECT_EQ(num_orbits(dims, parts, Symmetry::Antisymm),
+			  num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Antisymm }));
+
+	// The enumerators (and hence a range or scalar) convert implicitly from the sign of a permutation.
+	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ -1, 1 }),
+			  num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Symm }));
+	EXPECT_EQ(num_orbits(dims, parts, -1), num_orbits(dims, parts, Symmetry::Antisymm));
 }
 
 TEST(TPack, AntisymmetricOrbitSize) {
 	const util::PartitionList parts{ { { 0, 1 } } };
-	const std::vector< bool > anti{ true };
+	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, false, anti), 2u); // distinct columns -> 2!
 	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, false, anti), 0u); // equal columns -> vanishes

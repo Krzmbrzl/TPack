@@ -247,8 +247,10 @@ By default every partition is *symmetric*: permuting its columns leaves the tens
 permuting its columns multiplies the value by the sign (parity) of the permutation — the behaviour of a Slater determinant or a wedge product. Since a
 partition is a whole symmetric group acting on its columns, antisymmetry is a property of the partition as a whole.
 
-Antisymmetry is passed as a parallel **sign array**: a range with one `bool` per partition (`true` = antisymmetric), given as the trailing `signs`
-argument that every function accepts. Omitting it means all partitions are symmetric, so existing code is unaffected. Two things change for an
+Antisymmetry is passed via the trailing `signs` argument that every function accepts: a range with one `tpack::Symmetry` per partition
+(`Symmetry::Antisymm` or `Symmetry::Symm`). A single `Symmetry` may be passed instead to apply it to every partition, and the enumerators convert
+implicitly from the integer sign of a permutation (`+1` = symmetric, `-1` = antisymmetric), so `{-1}` is accepted too. A range-valued `signs` must have
+exactly one entry per partition. Omitting the argument means all partitions are symmetric, so existing code is unaffected. Two things change for an
 antisymmetric partition:
 
 - **Vanishing.** If two of its columns are equal, the element is forced to zero and is not stored. Its canonical representatives are therefore the
@@ -262,7 +264,7 @@ antisymmetric partition:
 ```cpp
 std::vector<std::size_t> dims = {4, 4};
 std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
-std::vector<bool> signs = {true};                        // the pair is antisymmetric
+std::vector<tpack::Symmetry> signs = {tpack::Symmetry::Antisymm};  // the pair is antisymmetric
 
 // Antisymmetric pairs store only the strictly-decreasing tuples: C(4, 2) = 6.
 assert(tpack::num_orbits(dims, partitions, signs) == 6);

@@ -27,19 +27,23 @@ namespace tpack {
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param indexing The indexing to test.
  * @param partitions The symmetry partitions.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return @c true if @p indexing is canonical, @c false otherwise.
  *
  * @see canonicalize, next_orbit_representative, rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
+		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions, const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
+
+	details::assert_signs_match(signs, partitions);
 
 	std::size_t part_index = 0;
 	for (auto &&part_levels : partitions) {
@@ -84,19 +88,23 @@ constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions, const 
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param indexing The indexing to canonicalize in place.
  * @param partitions The symmetry partitions.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return The phase @c +1, @c -1 or @c 0 (vanishing) relating the input to its canonical representative.
  *
  * @see is_canonical
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
+		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
+
+	details::assert_signs_match(signs, partitions);
 
 	int phase              = 1;
 	bool vanishes          = false;

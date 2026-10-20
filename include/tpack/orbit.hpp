@@ -35,22 +35,26 @@ namespace tpack {
  *
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param dims The dimension (extent) of every index of the tensor.
  * @param partitions The symmetry partitions acting on the tensor's indices.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return The number of orbits, i.e. the number of entries required to store the (anti)symmetric tensor.
  *
  * @pre Within every level of a partition, all referenced indices share the same dimension.
  * @see rank, unrank
  */
 template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
+		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
 								 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
+
+	details::assert_signs_match(signs, partitions);
 
 	std::size_t num        = 1;
 	std::size_t part_index = 0;
@@ -136,10 +140,12 @@ namespace details {
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx [in,out] The indexing to advance in place.
  * @param parts The symmetry partitions.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @param phase [in,out] Optional pointer to the running antisymmetric sign (@c +1 or @c -1). When supplied it
  *        must be initialised to the sign of @p idx relative to canonical before the first call (@c +1 when
  *        starting from the canonical representative); it is updated in step with @p idx.
@@ -149,9 +155,11 @@ namespace details {
  * @see is_canonical
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
+		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
 										 const Signs &signs = details::all_symmetric, int *phase = nullptr) {
+	details::assert_signs_match(signs, parts);
+
 	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
 
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
@@ -184,21 +192,25 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx The reference indexing
  * @param parts The symmetry partitions.
  * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
- * @param signs Per-partition flags (@c true meaning antisymmetric); defaults to all partitions symmetric.
+ * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
+ *        partitions symmetric.
  * @return Number of elements in the respective orbit, or @c 0 if the element vanishes by antisymmetry.
  *
  * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::sign_range Signs = details::all_symmetric_t >
+		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false,
 								 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::size;
+
+	details::assert_signs_match(signs, parts);
 
 	std::size_t orb_size   = 1;
 	std::size_t part_index = 0;

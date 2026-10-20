@@ -34,12 +34,13 @@ namespace details {
 	 * @tparam col_major @c true to order for a column-major (smallest index first) layout, @c false for
 	 *         row-major (largest index first).
 	 * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
-	 * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+	 * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+	 *         Symmetry flags, or the all_symmetric_t sentinel.
 	 * @param partitions [in,out] The partition specification to reorder in place.
-	 * @param signs [in,out] The per-partition sign array to reorder in lockstep; the all_symmetric_t sentinel
-	 *        leaves nothing to reorder.
+	 * @param signs [in,out] The per-partition sign array to reorder in lockstep; a single Symmetry and the
+	 *        all_symmetric_t sentinel apply uniformly and leave nothing to reorder.
 	 */
-	template< bool col_major, std::ranges::range Partitions, sign_range Signs = all_symmetric_t >
+	template< bool col_major, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
 	void sort_partition(Partitions &&partitions, Signs &&signs = all_symmetric_t{}) {
 		using std::ranges::begin;
 
@@ -73,11 +74,12 @@ namespace details {
 		std::iota(order.begin(), order.end(), std::size_t(0));
 		std::ranges::sort(order, cmp_less{}, [&keys](std::size_t i) { return keys[i]; });
 
-		if constexpr (std::is_same_v< std::remove_cvref_t< Signs >, all_symmetric_t >) {
-			details::apply_permutation(order, partitions);
-		} else {
+		if constexpr (std::ranges::random_access_range< Signs >) {
 			assert(static_cast< std::size_t >(std::ranges::distance(signs)) == keys.size());
 			details::apply_permutation(order, partitions, signs);
+		} else {
+			// The sentinel and a single Symmetry apply to every partition, so there is nothing to reorder.
+			details::apply_permutation(order, partitions);
 		}
 	}
 
@@ -91,13 +93,14 @@ namespace details {
  * partitions become identical, yielding a stable rank()/unrank() layout.
  *
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param partitions [in,out] The partition specification to reorder in place.
  * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
  *
  * @see sort_partition_row_major
  */
-template< std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+template< std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
 void sort_partition_col_major(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
 	details::sort_partition< true >(partitions, signs);
 }
@@ -109,13 +112,14 @@ void sort_partition_col_major(Partitions &&partitions, Signs &&signs = details::
  * matching a row-major storage order.
  *
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
- * @tparam Signs A random-access range of per-partition antisymmetry flags, or the all_symmetric_t sentinel.
+ * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
+ *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param partitions [in,out] The partition specification to reorder in place.
  * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
  *
  * @see sort_partition_col_major
  */
-template< std::ranges::range Partitions, details::sign_range Signs = details::all_symmetric_t >
+template< std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
 void sort_partition_row_major(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
 	details::sort_partition< false >(partitions, signs);
 }

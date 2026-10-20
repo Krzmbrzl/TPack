@@ -134,14 +134,14 @@ TEST(TPack, AntisymmetricRankRoundTrip) {
 	struct Case {
 		util::Dimensions dims;
 		util::PartitionList parts;
-		std::vector< bool > signs;
+		std::vector< Symmetry > signs;
 	};
 
 	const std::vector< Case > cases{
-		{ { 4, 4 }, { { { 0, 1 } } }, { true } },
-		{ { 5, 5, 5 }, { { { 0, 1, 2 } } }, { true } },
-		{ { 4, 4, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }, { true, false } },
-		{ { 2, 2, 3, 3 }, { { { 0, 1 }, { 2, 3 } } }, { true } },
+		{ { 4, 4 }, { { { 0, 1 } } }, { Symmetry::Antisymm } },
+		{ { 5, 5, 5 }, { { { 0, 1, 2 } } }, { Symmetry::Antisymm } },
+		{ { 4, 4, 3, 3 }, { { { 0, 1 } }, { { 2, 3 } } }, { Symmetry::Antisymm, Symmetry::Symm } },
+		{ { 2, 2, 3, 3 }, { { { 0, 1 }, { 2, 3 } } }, { Symmetry::Antisymm } },
 	};
 
 	for (const auto &c : cases) {
