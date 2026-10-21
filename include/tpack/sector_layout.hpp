@@ -14,6 +14,7 @@
 #include <compare>
 #include <cstddef>
 #include <map>
+#include <numeric>
 #include <ranges>
 #include <utility>
 #include <vector>
@@ -175,13 +176,10 @@ public:
 		assert(size(idx) == m_num_slots);
 		assert(is_canonical(idx));
 
-		const auto it = std::ranges::begin(idx);
 		std::vector< Label > labels(m_num_slots);
 		std::vector< std::size_t > locals(m_num_slots);
-		for (std::size_t slot = 0; slot < m_num_slots; ++slot) {
-			labels[slot] = it[static_cast< std::ptrdiff_t >(slot)].label;
-			locals[slot] = it[static_cast< std::ptrdiff_t >(slot)].local;
-		}
+		std::ranges::transform(idx, labels.begin(), &Labeled< Label >::label);
+		std::ranges::transform(idx, locals.begin(), &Labeled< Label >::local);
 
 		const auto found = m_sector_index.find(labels);
 		assert(found != m_sector_index.end());
@@ -211,10 +209,10 @@ public:
 		std::vector< std::size_t > locals(m_num_slots, 0);
 		tpack::unrank(locals, r - m_sectors[sector].offset, block.local_dims, block.run_parts, block.run_signs);
 
-		const auto it = std::ranges::begin(idx);
-		for (std::size_t slot = 0; slot < m_num_slots; ++slot) {
-			it[static_cast< std::ptrdiff_t >(slot)] = Labeled< Label >{ m_sectors[sector].labels[slot], locals[slot] };
-		}
+		std::ranges::transform(m_sectors[sector].labels, locals, std::ranges::begin(idx),
+							   [](const Label &label, std::size_t local) {
+								   return Labeled< Label >{ label, local };
+							   });
 
 		assert(is_canonical(idx));
 	}
@@ -268,31 +266,18 @@ private:
 
 	/// Checks the per-level uniform-dimension precondition (intended for use inside @c assert).
 	bool levels_uniform() const {
-		for (const auto &part : m_partitions) {
-			for (const auto &level : part) {
-				if (level.empty()) {
-					continue;
-				}
-				const auto &reference = m_slot_dims[level.front()];
-				for (std::size_t slot : level) {
-					if (m_slot_dims[slot] != reference) {
-						return false;
-					}
-				}
-			}
-		}
-		return true;
+		return std::ranges::all_of(m_partitions, [&](const Partition &part) {
+			return std::ranges::all_of(part, [&](const auto &level) {
+				return std::ranges::all_of(
+					level, [&](std::size_t slot) { return m_slot_dims[slot] == m_slot_dims[level.front()]; });
+			});
+		});
 	}
 
 	/// Whether columns @p lhs and @p rhs of @p part carry the same label on every level.
 	bool same_label_column(const Partition &part, const std::vector< Label > &labels, std::size_t lhs,
 						   std::size_t rhs) const {
-		for (const auto &level : part) {
-			if (!(labels[level[lhs]] == labels[level[rhs]])) {
-				return false;
-			}
-		}
-		return true;
+		return std::ranges::all_of(part, [&](const auto &level) { return labels[level[lhs]] == labels[level[rhs]]; });
 	}
 
 	/// Builds the in-sector integer problem for a fixed per-slot label assignment.
@@ -310,12 +295,14 @@ private:
 
 			// Equal-label columns are contiguous in a canonical sector, so split the partition into maximal runs
 			// of equal label; each run is an ordinary sub-partition packed over the local indices.
+			const auto columns    = std::views::iota(std::size_t{ 0 }, num_cols);
 			std::size_t run_start = 0;
 			while (run_start < num_cols) {
-				std::size_t run_end = run_start + 1;
-				while (run_end < num_cols && same_label_column(part, labels, run_end - 1, run_end)) {
-					++run_end;
-				}
+				const auto remaining = columns | std::views::drop(run_start);
+				const auto boundary  = std::ranges::adjacent_find(remaining, [&](std::size_t lhs, std::size_t rhs) {
+                    return !same_label_column(part, labels, lhs, rhs);
+                });
+				const std::size_t run_end = boundary == remaining.end() ? num_cols : *boundary + 1;
 
 				Partition run;
 				for (const auto &level : part) {
@@ -335,10 +322,8 @@ private:
 	/// Enumerates every allowed canonical sector and records its offset and size.
 	template< typename Combine > void enumerate_sectors(const Constraint< Label, Combine > &constraint) {
 		// With a slot offering no label the product of choices is empty and there are no sectors.
-		for (const auto &entries : m_slot_dims) {
-			if (entries.empty()) {
-				return;
-			}
+		if (std::ranges::any_of(m_slot_dims, [](const auto &entries) { return entries.empty(); })) {
+			return;
 		}
 
 		std::vector< std::size_t > pos(m_num_slots, 0);
@@ -348,10 +333,7 @@ private:
 				labels[slot] = m_slot_dims[slot][pos[slot]].label;
 			}
 
-			Label product = constraint.identity;
-			for (std::size_t slot = 0; slot < m_num_slots; ++slot) {
-				product = constraint.combine(product, labels[slot]);
-			}
+			Label product = std::accumulate(labels.begin(), labels.end(), constraint.identity, constraint.combine);
 
 			if (product == constraint.target && tpack::is_canonical(labels, m_partitions, details::all_symmetric)) {
 				Block block          = build_block(labels);
@@ -380,18 +362,9 @@ private:
 
 	/// Returns the index of the sector owning rank @p r (the last sector whose offset does not exceed @p r).
 	std::size_t sector_of(std::size_t r) const {
-		std::size_t lo = 0;
-		std::size_t hi = m_sectors.size();
-		while (lo < hi) {
-			const std::size_t mid = lo + (hi - lo) / 2;
-			if (m_sectors[mid].offset <= r) {
-				lo = mid + 1;
-			} else {
-				hi = mid;
-			}
-		}
-		assert(lo > 0);
-		return lo - 1;
+		const auto next = std::ranges::upper_bound(m_sectors, r, {}, &Sector::offset);
+		assert(next != m_sectors.begin());
+		return static_cast< std::size_t >(next - m_sectors.begin()) - 1;
 	}
 };
 
