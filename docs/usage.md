@@ -306,6 +306,7 @@ from a slot simply do not occur there), the usual partitions and `signs`, and a
 
 #include <cassert>
 #include <cstddef>
+#include <iostream>
 #include <map>
 #include <vector>
 
@@ -337,12 +338,14 @@ int main() {
 		offset += sector.size;
 	}
 	assert(offset == layout.size());
+	std::cout << "Final offset: " << offset << "\n";
 
 	// rank and unrank are exact inverses over [0, size()), and every unranked indexing is canonical.
 	for (std::size_t r = 0; r < layout.size(); ++r) {
 		const std::vector<tpack::Labeled<Label>> idx = layout.unrank(r);
 		assert(layout.is_canonical(idx));
 		assert(layout.rank(idx) == r);
+		std::cout << "Computed rank " << layout.rank(idx) << " == " << r << "\n";
 	}
 
 	return 0;
