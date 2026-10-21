@@ -39,6 +39,13 @@ added to — factor the shared part out into a function or utility both
 call, rather than copying it. Implementation helpers that are not part of
 the public API go under `include/tpack/details/`.
 
+## Use of std functionality
+
+Prefer using existing functionality from the STL C++ library conforming
+to the C++ standard in use (see CMakeLists.txt) to hand-coding something
+equivalent. Only hand-code if STL algos don't allow for a clean and
+readable implementation or would make the implementation more complicated.
+
 ## Headers must be self-contained
 
 TPack is header-only (`include/tpack/`), so a header missing an `#include`

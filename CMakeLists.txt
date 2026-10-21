@@ -14,12 +14,16 @@ target_sources(tensor_packing
 	FILES
 		"include/tpack/details/apply_permutation.hpp"
 		"include/tpack/details/binomial.hpp"
+		"include/tpack/details/canonical.hpp"
 		"include/tpack/details/factorial.hpp"
 		"include/tpack/details/level_columns_view.hpp"
 		"include/tpack/details/symmetry.hpp"
+		"include/tpack/indexing.hpp"
+		"include/tpack/labeled.hpp"
 		"include/tpack/orbit.hpp"
 		"include/tpack/partition.hpp"
 		"include/tpack/rank.hpp"
+		"include/tpack/sector_layout.hpp"
 )
 
 add_library(TPack::TPack ALIAS tensor_packing)

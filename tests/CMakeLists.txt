@@ -17,9 +17,11 @@ add_executable(tensor_packing_tests
 	"column_view.cpp"
 	"factorial.cpp"
 	"indexing.cpp"
+	"labeled.cpp"
 	"orbit.cpp"
 	"partition.cpp"
 	"rank.cpp"
+	"sector_layout.cpp"
 )
 target_link_libraries(tensor_packing_tests PRIVATE tensor_packing gtest_main)
 set_target_properties(tensor_packing_tests PROPERTIES CXX_SCAN_FOR_MODULES OFF)
