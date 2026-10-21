@@ -285,19 +285,17 @@ assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, false, sign
 
 ## Labeled (sector-graded) packing
 
-Tensors with abelian point-group symmetry store each index not as a flat integer but as a `tpack::Labeled<Label>`
-value: a symmetry label (e.g. an irrep) together with a local index enumerating the states that share that label.
-A group *selection rule* means only label tuples whose group product equals a target survive; the rest of the
-tensor is structurally zero. See the [Theory](theory.md#labelled-tensors-and-sectors) page for the background.
+Tensors with abelian point-group symmetry store each index not as a flat integer but as a `tpack::Labeled<Label>` value: a symmetry label (e.g. an
+irrep) together with a local index enumerating the states that share that label. A group *selection rule* means only label tuples whose group product
+equals a target survive; the rest of the tensor is structurally zero. See the [Theory](theory.md#labelled-tensors-and-sectors) page for the
+background.
 
-`tpack::SectorLayout<Label>` packs exactly the surviving entries. It groups storage into *sectors* — one contiguous
-block per allowed, canonical label assignment — and maps a canonical labelled indexing to and from a contiguous
-rank in `[0, size())`. Within a sector every index's label is fixed, so what remains is the ordinary integer
-packing of the local indices, which it delegates to [`num_orbits`/`rank`/`unrank`](#the-public-functions).
+`tpack::SectorLayout<Label>` packs exactly the surviving entries. It groups storage into *sectors* — one contiguous block per allowed, canonical label
+assignment — and maps a canonical labelled indexing to and from a contiguous rank in `[0, size())`. Within a sector every index's label is fixed, so
+what remains is the ordinary integer packing of the local indices, which it delegates to [`num_orbits`/`rank`/`unrank`](#the-public-functions).
 
-It is constructed from per-slot `label -> count` dimensions (any range of `{label, count}` pairs; labels absent
-from a slot simply do not occur there), the usual partitions and `signs`, and a
-`tpack::Constraint{combine, identity, target}` describing the group product.
+It is constructed from per-slot `label -> count` dimensions (any range of `{label, count}` pairs; labels absent from a slot simply do not occur
+there), the usual partitions and `signs`, and a `tpack::Constraint{combine, identity, target}` describing the group product.
 
 <!-- tpack-snippet: name=usage_labeled mode=program -->
 ```cpp
@@ -352,10 +350,9 @@ int main() {
 }
 ```
 
-`sectors()` exposes each block's `{labels, offset, size}` for block-wise processing. The canonical form is
-*sector-major* (labels are the major sort key, so each sector stays contiguous); for single-level partitions it
-coincides with [`is_canonical`](#is_canonical--next_orbit_representative), but for multi-level partitions it
-differs, so test and canonicalise labelled indexings against `SectorLayout::is_canonical`. Antisymmetry acts within
-a sector, on the locals of equal-label column runs: two columns sharing a label but differing in local index are
-distinct, and only equal `(label, local)` columns vanish.
+`sectors()` exposes each block's `{labels, offset, size}` for block-wise processing. The canonical form is *sector-major* (labels are the major sort
+key, so each sector stays contiguous); for single-level partitions it coincides with [`is_canonical`](#is_canonical--next_orbit_representative), but
+for multi-level partitions it differs, so test and canonicalise labelled indexings against `SectorLayout::is_canonical`. Antisymmetry acts within a
+sector, on the locals of equal-label column runs: two columns sharing a label but differing in local index are distinct, and only equal `(label,
+local)` columns vanish.
 
