@@ -243,6 +243,16 @@ private:
 		std::vector< Symmetry > run_signs;
 	};
 
+	std::size_t m_num_slots = 0;
+	std::size_t m_size      = 0;
+	std::vector< std::vector< std::pair< Label, std::size_t > > > m_slot_dims;
+	std::vector< Partition > m_partitions;
+	std::vector< Symmetry > m_part_signs;
+	std::vector< Sector > m_sectors;
+	std::vector< Block > m_blocks;
+	std::map< std::vector< Label >, std::size_t > m_sector_index;
+
+
 	/// Looks up the number of local values for @p label at @p slot.
 	std::size_t count_at(std::size_t slot, const Label &label) const {
 		const auto &entries = m_slot_dims[slot];
@@ -378,15 +388,6 @@ private:
 		assert(lo > 0);
 		return lo - 1;
 	}
-
-	std::size_t m_num_slots = 0;
-	std::size_t m_size      = 0;
-	std::vector< std::vector< std::pair< Label, std::size_t > > > m_slot_dims;
-	std::vector< Partition > m_partitions;
-	std::vector< Symmetry > m_part_signs;
-	std::vector< Sector > m_sectors;
-	std::vector< Block > m_blocks;
-	std::map< std::vector< Label >, std::size_t > m_sector_index;
 };
 
 } // namespace tpack
