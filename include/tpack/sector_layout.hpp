@@ -157,8 +157,8 @@ public:
 		// Label tuple first; only columns sharing it are ordered by their local indices.
 		return details::is_canonical_by(
 			m_partitions, m_part_signs, [&](const Partition &part, std::size_t lhs, std::size_t rhs) {
-				const int label_cmp = details::reverse_lex_compare(part, lhs, rhs, label_of);
-				return label_cmp != 0 ? label_cmp : details::reverse_lex_compare(part, lhs, rhs, local_of);
+				const auto label_order = details::reverse_lex_compare(part, lhs, rhs, label_of);
+				return label_order != 0 ? label_order : details::reverse_lex_compare(part, lhs, rhs, local_of);
 			});
 	}
 
