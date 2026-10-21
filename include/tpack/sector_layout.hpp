@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <compare>
 #include <cstddef>
 #include <map>
 #include <ranges>
@@ -92,17 +93,15 @@ public:
 		// Materialise each slot's label -> count association, dropping absent (zero-count) labels and sorting by
 		// label so the enumeration order and the canonical label ordering agree.
 		for (auto &&slot : dims) {
-			std::vector< std::pair< Label, std::size_t > > entries;
+			std::vector< LabeledSlotDim > entries;
 			for (auto &&[label, count] : slot) {
 				if (count > 0) {
 					entries.emplace_back(label, count);
 				}
 			}
 
-			auto project_to_first = &decltype(entries)::value_type::first;
-
-			std::ranges::sort(entries, {}, project_to_first);
-			assert(std::ranges::adjacent_find(entries, {}, project_to_first) == entries.end());
+			std::ranges::sort(entries, {}, &LabeledSlotDim::label);
+			assert(std::ranges::adjacent_find(entries, {}, &LabeledSlotDim::label) == entries.end());
 
 			m_slot_dims.push_back(std::move(entries));
 		}
@@ -242,10 +241,16 @@ private:
 		std::vector< Partition > run_parts;
 		std::vector< Symmetry > run_signs;
 	};
+	struct LabeledSlotDim {
+		Label label;
+		std::size_t dim;
+
+		auto operator<=>(const LabeledSlotDim &) const = default;
+	};
 
 	std::size_t m_num_slots = 0;
 	std::size_t m_size      = 0;
-	std::vector< std::vector< std::pair< Label, std::size_t > > > m_slot_dims;
+	std::vector< std::vector< LabeledSlotDim > > m_slot_dims;
 	std::vector< Partition > m_partitions;
 	std::vector< Symmetry > m_part_signs;
 	std::vector< Sector > m_sectors;
@@ -256,9 +261,9 @@ private:
 	/// Looks up the number of local values for @p label at @p slot.
 	std::size_t count_at(std::size_t slot, const Label &label) const {
 		const auto &entries = m_slot_dims[slot];
-		const auto it = std::ranges::lower_bound(entries, label, {}, [](const auto &entry) { return entry.first; });
-		assert(it != entries.end() && it->first == label);
-		return it->second;
+		const auto it       = std::ranges::lower_bound(entries, label, {}, &LabeledSlotDim::label);
+		assert(it != entries.end() && it->label == label);
+		return it->dim;
 	}
 
 	/// Checks the per-level uniform-dimension precondition (intended for use inside @c assert).
@@ -340,7 +345,7 @@ private:
 		std::vector< Label > labels(m_num_slots);
 		while (true) {
 			for (std::size_t slot = 0; slot < m_num_slots; ++slot) {
-				labels[slot] = m_slot_dims[slot][pos[slot]].first;
+				labels[slot] = m_slot_dims[slot][pos[slot]].label;
 			}
 
 			Label product = constraint.identity;
