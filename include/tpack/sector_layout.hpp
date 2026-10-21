@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/details/canonical.hpp>
 #include <tpack/details/symmetry.hpp>
 #include <tpack/indexing.hpp>
 #include <tpack/labeled.hpp>
@@ -114,6 +115,7 @@ public:
 			for (auto &&level : part) {
 				levels.emplace_back(begin(level), end(level));
 			}
+
 			m_partitions.push_back(std::move(levels));
 			m_part_signs.push_back(details::antisymmetric_at(signs, part_index) ? Symmetry::Antisymm : Symmetry::Symm);
 			++part_index;
@@ -147,31 +149,17 @@ public:
 	 */
 	template< std::ranges::random_access_range Indexing > bool is_canonical(const Indexing &idx) const {
 		const auto it = std::ranges::begin(idx);
+		auto label_of = [&](std::size_t slot) -> const Label & {
+			return it[static_cast< std::ptrdiff_t >(slot)].label;
+		};
+		auto local_of = [&](std::size_t slot) { return it[static_cast< std::ptrdiff_t >(slot)].local; };
 
-		for (std::size_t part_index = 0; part_index < m_partitions.size(); ++part_index) {
-			const Partition &part      = m_partitions[part_index];
-			const bool antisym         = m_part_signs[part_index] == Symmetry::Antisymm;
-			const std::size_t num_cols = part.empty() ? 0 : part.front().size();
-
-			for (std::size_t col = 1; col < num_cols; ++col) {
-				// Compare the two columns' labels reverse-lexicographically (last level most significant).
-				const int label_cmp = reverse_lex_compare(it, part, col - 1, col, &Labeled< Label >::label);
-				if (label_cmp < 0) {
-					return false;
-				}
-				if (label_cmp > 0) {
-					continue;
-				}
-
-				// Equal label tuple: the columns share a run, so their locals must be non-increasing too.
-				const int local_cmp = reverse_lex_compare(it, part, col - 1, col, &Labeled< Label >::local);
-				if (local_cmp < 0 || (local_cmp == 0 && antisym)) {
-					return false;
-				}
-			}
-		}
-
-		return true;
+		// Label tuple first; only columns sharing it are ordered by their local indices.
+		return details::is_canonical_by(
+			m_partitions, m_part_signs, [&](const Partition &part, std::size_t lhs, std::size_t rhs) {
+				const int label_cmp = details::reverse_lex_compare(part, lhs, rhs, label_of);
+				return label_cmp != 0 ? label_cmp : details::reverse_lex_compare(part, lhs, rhs, local_of);
+			});
 	}
 
 	/**
@@ -254,20 +242,6 @@ private:
 		std::vector< Partition > run_parts;
 		std::vector< Symmetry > run_signs;
 	};
-
-	/// Compares a given member (@c label or @c local) of two columns reverse-lexicographically over the levels,
-	/// returning @c +1 / @c -1 / @c 0 for the first (left) column greater / smaller / equal.
-	template< typename It, typename Member >
-	static int reverse_lex_compare(It it, const Partition &part, std::size_t lhs, std::size_t rhs, Member member) {
-		for (std::size_t level = part.size(); level-- > 0;) {
-			const auto &left  = (it[static_cast< std::ptrdiff_t >(part[level][lhs])]).*member;
-			const auto &right = (it[static_cast< std::ptrdiff_t >(part[level][rhs])]).*member;
-			if (left != right) {
-				return left > right ? 1 : -1;
-			}
-		}
-		return 0;
-	}
 
 	/// Looks up the number of local values for @p label at @p slot.
 	std::size_t count_at(std::size_t slot, const Label &label) const {

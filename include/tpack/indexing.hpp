@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tpack/details/apply_permutation.hpp>
+#include <tpack/details/canonical.hpp>
 #include <tpack/details/level_columns_view.hpp>
 #include <tpack/details/symmetry.hpp>
 
@@ -40,37 +41,11 @@ namespace tpack {
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
 		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions, const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
-	using std::ranges::size;
+	auto key = [&](std::size_t slot) -> decltype(auto) { return indexing[slot]; };
 
-	details::assert_signs_match(signs, partitions);
-
-	std::size_t part_index = 0;
-	for (auto &&part_levels : partitions) {
-		const bool antisym         = details::antisymmetric_at(signs, part_index);
-		const std::size_t num_cols = size(*begin(part_levels));
-		++part_index;
-
-		// Columns (compared in reverse lexicographic order) have to be non-increasing, and strictly decreasing
-		// for an antisymmetric partition.
-		for (std::size_t col = 1; col < num_cols; ++col) {
-			bool strictly_greater = false;
-			for (auto &&level : std::ranges::views::reverse(part_levels)) {
-				if (indexing[level[col - 1]] < indexing[level[col]]) {
-					return false;
-				}
-				if (indexing[level[col - 1]] > indexing[level[col]]) {
-					strictly_greater = true;
-					break;
-				}
-			}
-			if (antisym && !strictly_greater) {
-				return false;
-			}
-		}
-	}
-
-	return true;
+	return details::is_canonical_by(partitions, signs, [&](const auto &part_levels, std::size_t lhs, std::size_t rhs) {
+		return details::reverse_lex_compare(part_levels, lhs, rhs, key);
+	});
 }
 
 /**

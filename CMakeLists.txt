@@ -14,6 +14,7 @@ target_sources(tensor_packing
 	FILES
 		"include/tpack/details/apply_permutation.hpp"
 		"include/tpack/details/binomial.hpp"
+		"include/tpack/details/canonical.hpp"
 		"include/tpack/details/factorial.hpp"
 		"include/tpack/details/level_columns_view.hpp"
 		"include/tpack/details/symmetry.hpp"
