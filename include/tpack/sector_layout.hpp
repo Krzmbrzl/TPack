@@ -97,9 +97,12 @@ public:
 					entries.emplace_back(label, count);
 				}
 			}
-			std::ranges::sort(entries, {}, [](const auto &entry) { return entry.first; });
-			assert(std::ranges::adjacent_find(entries, {}, [](const auto &entry) { return entry.first; })
-				   == entries.end());
+
+			auto project_to_first = &decltype(entries)::value_type::first;
+
+			std::ranges::sort(entries, {}, project_to_first);
+			assert(std::ranges::adjacent_find(entries, {}, project_to_first) == entries.end());
+
 			m_slot_dims.push_back(std::move(entries));
 		}
 		m_num_slots = m_slot_dims.size();
