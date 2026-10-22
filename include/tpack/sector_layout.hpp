@@ -169,11 +169,11 @@ public:
 	 * first.
 	 *
 	 * @tparam Indexing A random-access range of @c Labeled<Label>.
-	 * @param idx The labelled indexing to test.
-	 * @return @c true if @p idx is sector-major canonical.
+	 * @param indexing The labelled indexing to test.
+	 * @return @c true if @p indexing is sector-major canonical.
 	 */
-	template< std::ranges::random_access_range Indexing > bool is_canonical(const Indexing &idx) const {
-		const auto it = std::ranges::begin(idx);
+	template< std::ranges::random_access_range Indexing > bool is_canonical(const Indexing &indexing) const {
+		const auto it = std::ranges::begin(indexing);
 		auto label_of = [&](std::size_t slot) -> const Label & {
 			return it[static_cast< std::ptrdiff_t >(slot)].label;
 		};
@@ -191,20 +191,20 @@ public:
 	 * @brief Computes the packed rank of a canonical labelled indexing.
 	 *
 	 * @tparam Indexing A random-access range of @c Labeled<Label>.
-	 * @param idx The canonical labelled indexing to rank.
+	 * @param indexing The canonical labelled indexing to rank.
 	 * @return The rank in @c [0, size()): the owning sector's offset plus the in-sector rank.
 	 *
-	 * @pre @p idx is canonical (see is_canonical) and its label tuple is an allowed sector.
+	 * @pre @p indexing is canonical (see is_canonical) and its label tuple is an allowed sector.
 	 */
-	template< std::ranges::random_access_range Indexing > std::size_t rank(const Indexing &idx) const {
+	template< std::ranges::random_access_range Indexing > std::size_t rank(const Indexing &indexing) const {
 		using std::ranges::size;
-		assert(size(idx) == m_num_slots);
-		assert(is_canonical(idx));
+		assert(size(indexing) == m_num_slots);
+		assert(is_canonical(indexing));
 
 		std::vector< Label > labels(m_num_slots);
 		std::vector< std::size_t > locals(m_num_slots);
-		std::ranges::transform(idx, labels.begin(), &Labeled< Label >::label);
-		std::ranges::transform(idx, locals.begin(), &Labeled< Label >::local);
+		std::ranges::transform(indexing, labels.begin(), &Labeled< Label >::label);
+		std::ranges::transform(indexing, locals.begin(), &Labeled< Label >::local);
 
 		const auto found = m_sector_index.find(labels);
 		assert(found != m_sector_index.end());
@@ -218,43 +218,43 @@ public:
 	 * @brief Reconstructs the canonical labelled indexing from a rank (the inverse of rank()).
 	 *
 	 * @tparam Indexing A random-access range of @c Labeled<Label>.
-	 * @param r The rank to decode; must lie in @c [0, size()).
-	 * @param idx [out] Overwritten with the reconstructed canonical labelled indexing.
+	 * @param rank The rank to decode; must lie in @c [0, size()).
+	 * @param indexing [out] Overwritten with the reconstructed canonical labelled indexing.
 	 *
-	 * @post is_canonical(idx, ...) holds.
+	 * @post is_canonical(indexing, ...) holds.
 	 */
-	template< std::ranges::random_access_range Indexing > void unrank(std::size_t r, Indexing &idx) const {
+	template< std::ranges::random_access_range Indexing > void unrank(std::size_t rank, Indexing &indexing) const {
 		using std::ranges::size;
-		assert(r < m_size);
-		assert(size(idx) == m_num_slots);
+		assert(rank < m_size);
+		assert(size(indexing) == m_num_slots);
 
-		const std::size_t sector = sector_of(r);
+		const std::size_t sector = sector_of(rank);
 		const SectorBlock &block = m_blocks[sector];
 
 		std::vector< std::size_t > locals(m_num_slots, 0);
-		tpack::unrank(r - m_sectors[sector].offset, locals, block.local_dims, block.run_parts, block.run_signs);
+		tpack::unrank(rank - m_sectors[sector].offset, locals, block.local_dims, block.run_parts, block.run_signs);
 
-		std::ranges::transform(m_sectors[sector].labels, locals, std::ranges::begin(idx),
+		std::ranges::transform(m_sectors[sector].labels, locals, std::ranges::begin(indexing),
 							   [](const Label &label, std::size_t local) {
 								   return Labeled< Label >{ label, local };
 							   });
 
-		assert(is_canonical(idx));
+		assert(is_canonical(indexing));
 	}
 
 	/**
 	 * @brief Reconstructs and returns a freshly allocated canonical labelled indexing from a rank.
 	 *
 	 * @tparam Indexing The container to allocate and return (default @c std::vector<Labeled<Label>>).
-	 * @param r The rank to decode; must lie in @c [0, size()).
+	 * @param rank The rank to decode; must lie in @c [0, size()).
 	 * @return The reconstructed canonical labelled indexing, sized to the number of slots.
 	 */
 	template< std::ranges::random_access_range Indexing = std::vector< Labeled< Label > > >
-	Indexing unrank(std::size_t r) const {
-		Indexing idx;
-		idx.resize(m_num_slots);
-		unrank(r, idx);
-		return idx;
+	Indexing unrank(std::size_t rank) const {
+		Indexing indexing;
+		indexing.resize(m_num_slots);
+		unrank(rank, indexing);
+		return indexing;
 	}
 
 private:

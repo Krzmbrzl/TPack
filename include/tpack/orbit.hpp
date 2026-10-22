@@ -136,43 +136,45 @@ struct OrbitStep {
  * @brief Advances an indexing to the next representative of its symmetry orbit.
  *
  * Starting from any representative, repeated calls enumerate every member of the orbit exactly once and,
- * on the final call, restore @p idx to its canonical representative while reporting @c has_more == false.
+ * on the final call, restore @p indexing to its canonical representative while reporting @c has_more == false.
  * Columns of the last partition vary fastest; when a partition exhausts its permutations the enumeration
  * carries over into the next one, so the partitions behave like digits of a mixed-radix counter.
  *
- * The running antisymmetric sign is threaded through @p phase: pass the sign of @p idx relative to canonical
- * (@c +1 when starting at the canonical representative), and the returned OrbitStep::phase is the sign of the
- * advanced @p idx, which the caller feeds into the next call. It equals @c (-1) raised to the number of
- * column transpositions (over all antisymmetric partitions) separating @p idx from canonical. Symmetric
- * partitions never contribute a sign, so the phase can be ignored entirely for a purely symmetric orbit.
+ * The running antisymmetric sign is threaded through @p phase: pass the sign of @p indexing relative to
+ * canonical (@c +1 when starting at the canonical representative), and the returned OrbitStep::phase is the
+ * sign of the advanced @p indexing, which the caller feeds into the next call. It equals @c (-1) raised to the
+ * number of column transpositions (over all antisymmetric partitions) separating @p indexing from canonical.
+ * Symmetric partitions never contribute a sign, so the phase can be ignored entirely for a purely symmetric
+ * orbit.
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param idx [in,out] The indexing to advance in place.
- * @param parts The symmetry partitions.
+ * @param indexing [in,out] The indexing to advance in place.
+ * @param partitions The symmetry partitions.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
  *        partitions symmetric.
- * @param phase The antisymmetric sign of @p idx relative to canonical before the step (@c +1 at canonical).
- * @return An OrbitStep whose @c has_more is @c true if @p idx was advanced to a further representative and
- *         @c false once the orbit is exhausted (in which case @p idx has been reset to the canonical
- *         representative), and whose @c phase is the sign of the resulting @p idx.
+ * @param phase The antisymmetric sign of @p indexing relative to canonical before the step (@c +1 at
+ *        canonical).
+ * @return An OrbitStep whose @c has_more is @c true if @p indexing was advanced to a further representative and
+ *         @c false once the orbit is exhausted (in which case @p indexing has been reset to the canonical
+ *         representative), and whose @c phase is the sign of the resulting @p indexing.
  *
  * @see is_canonical, OrbitStep
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
-constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts, const Signs &signs = all_symmetric,
-											  int phase = 1) {
-	details::assert_signs_match(signs, parts);
+constexpr OrbitStep next_orbit_representative(Indexing &&indexing, Partitions &&partitions,
+											  const Signs &signs = all_symmetric, int phase = 1) {
+	details::assert_signs_match(signs, partitions);
 
-	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
+	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(partitions));
 
-	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+	for (auto &&part_levels : std::ranges::views::reverse(partitions)) {
 		--part_index;
 		const bool antisym = details::antisymmetric_at(signs, part_index);
 
-		details::LevelColumnsIndexingView columns(part_levels, idx);
+		details::LevelColumnsIndexingView columns(part_levels, indexing);
 
 		if (antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
 			phase = -phase;
@@ -200,33 +202,33 @@ constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts
  * @tparam Partitions A range of partitions describing the symmetry.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param idx The reference indexing
- * @param parts The symmetry partitions.
+ * @param indexing The reference indexing
+ * @param partitions The symmetry partitions.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
  *        partitions symmetric.
- * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
+ * @param indexing_canonical Whether @p indexing is already guaranteed to be in canonical form.
  * @return Number of elements in the respective orbit, or @c 0 if the element vanishes by antisymmetry.
  *
- * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
+ * @pre If @p indexing_canonical is @c true, @p indexing must actually be a canonical representative.
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
-constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, const Signs &signs = all_symmetric,
+constexpr std::size_t orbit_size(Indexing &&indexing, Partitions &&partitions, const Signs &signs = all_symmetric,
 								 bool indexing_canonical = false) {
-	details::assert_signs_match(signs, parts);
+	details::assert_signs_match(signs, partitions);
 
 	std::size_t orb_size   = 1;
 	std::size_t part_index = 0;
 
-	for (auto &&part_levels : parts) {
+	for (auto &&part_levels : partitions) {
 		const bool antisym = details::antisymmetric_at(signs, part_index);
 		++part_index;
 
-		details::LevelColumnsIndexingView columns(part_levels, idx);
+		details::LevelColumnsIndexingView columns(part_levels, indexing);
 
 		const std::size_t num_cols = details::num_columns(part_levels);
 
 		// A canonical representation keeps equal columns neighbouring; otherwise sort an index permutation so
-		// that equal columns become adjacent (idx itself is left untouched).
+		// that equal columns become adjacent (indexing itself is left untouched).
 		auto by_column = [&](std::size_t lhs, std::size_t rhs) { return columns[lhs] < columns[rhs]; };
 		std::vector< std::size_t > order = indexing_canonical ? details::index_permutation(num_cols)
 															  : details::sorted_index_permutation(num_cols, by_column);
