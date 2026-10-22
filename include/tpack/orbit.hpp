@@ -77,12 +77,12 @@ namespace details {
 	 * directly from the pivot/suffix structure of the permutation without materialising the full count. The
 	 * modular result is exactly what is needed to keep a running transposition counter correct.
 	 *
-	 * @tparam Columns The column-view type exposing @c num_cols() and indexed column comparison.
+	 * @tparam Columns The column-view type exposing @c num_columns() and indexed column comparison.
 	 * @param columns The columns about to be advanced; inspected but not modified.
 	 * @return The inversion-count delta (wrapping on @c std::size_t) of the next permutation step.
 	 */
 	template< typename Columns > constexpr std::size_t next_permutation_inversion_delta(Columns &columns) {
-		const std::size_t num_cols = columns.num_cols();
+		const std::size_t num_cols = columns.num_columns();
 		if (num_cols == 0) {
 			return 0;
 		}
