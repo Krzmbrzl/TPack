@@ -66,7 +66,7 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
 							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
 		const std::size_t part_size = size(*begin(part));
 
-		num *= details::partition_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
+		num *= details::canonical_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
 		++part_index;
 	}
 

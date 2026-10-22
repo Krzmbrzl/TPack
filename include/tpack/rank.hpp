@@ -144,14 +144,14 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 			const std::size_t n = effective_idx[i];
 			const std::size_t k = effective_size - i;
-			current_rank += details::combinatorial_term(n, k, antisym);
+			current_rank += details::canonical_count(n, k, antisym);
 		}
 
 		// Multiply by stride and add to total rank
 		rank += stride * current_rank;
 
 		// Update stride by multiplying it by the max rank of the effective 1D partition
-		stride *= details::partition_count(effective_dim, effective_size, antisym);
+		stride *= details::canonical_count(effective_dim, effective_size, antisym);
 	}
 
 	return rank;
@@ -258,7 +258,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 			col_dim *= dims[*begin(level)];
 		}
 
-		const std::size_t current_part_dim = details::partition_count(col_dim, num_cols, antisym);
+		const std::size_t current_part_dim = details::canonical_count(col_dim, num_cols, antisym);
 		assert(std::numeric_limits< std::size_t >::max() / current_part_dim >= part_stride);
 		part_stride *= current_part_dim;
 	}
@@ -276,7 +276,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 		// Obtain the stride of the current partition by dividing part_stride
 		// by the dimension of the current partition
-		const std::size_t current_part_dim = details::partition_count(col_dim, num_cols, antisym);
+		const std::size_t current_part_dim = details::canonical_count(col_dim, num_cols, antisym);
 		assert(part_stride % current_part_dim == 0);
 		part_stride /= current_part_dim;
 		assert(part_stride >= 1);
@@ -307,7 +307,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 			auto generator = std::ranges::views::reverse(std::ranges::views::iota(min_n, max_n + 1))
 							 | std::ranges::views::transform([remaining, antisym](std::size_t val) {
-								   return details::combinatorial_term(val, remaining, antisym);
+								   return details::canonical_count(val, remaining, antisym);
 							   });
 
 			auto it =
