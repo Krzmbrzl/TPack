@@ -43,18 +43,6 @@ constexpr std::strong_ordering reverse_lex_compare(const Levels &part_levels, st
 }
 
 /**
- * @brief Tests whether the columns of every partition are non-increasing under a given column ordering.
- *
- * Columns that compare equal are only allowed in symmetric partitions. Each partition is checked
- * independently.
- *
- * @param partitions The symmetry partitions.
- * @param signs A single Symmetry, a per-partition range of Symmetry flags, or the all_symmetric_t sentinel.
- * @param compare_columns A callable @c std::strong_ordering(const Levels &part_levels, std::size_t lhs, std::size_t
- * rhs) that returns a positive / negative / zero value if column @c lhs is greater / smaller / equal to @c rhs.
- * @return @c true if all partitions are ordered canonically.
- */
-/**
  * @brief Whether a merged effective index is a canonical single-partition sequence.
  *
  * A canonical sequence is non-increasing; an antisymmetric one must in addition be strictly decreasing, since
@@ -69,6 +57,18 @@ template< typename Range > constexpr bool is_canonical_sequence(Range &&effectiv
 		   && (!antisym || std::ranges::adjacent_find(effective) == std::ranges::end(effective));
 }
 
+/**
+ * @brief Tests whether the columns of every partition are non-increasing under a given column ordering.
+ *
+ * Columns that compare equal are only allowed in symmetric partitions. Each partition is checked
+ * independently.
+ *
+ * @param partitions The symmetry partitions.
+ * @param signs A single Symmetry, a per-partition range of Symmetry flags, or the all_symmetric_t sentinel.
+ * @param compare_columns A callable @c std::strong_ordering(const Levels &part_levels, std::size_t lhs, std::size_t
+ * rhs) that returns a positive / negative / zero value if column @c lhs is greater / smaller / equal to @c rhs.
+ * @return @c true if all partitions are ordered canonically.
+ */
 template< std::ranges::range Partitions, signs_spec Signs, typename CompareColumns >
 constexpr bool is_canonical_by(Partitions &&partitions, const Signs &signs, CompareColumns &&compare_columns) {
 	assert_signs_match(signs, partitions);
