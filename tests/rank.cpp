@@ -183,6 +183,33 @@ TEST(TPack, AntisymmetricScratchBufferOverloads) {
 	}
 }
 
+TEST(TPack, ExplicitSignSpecForms) {
+	// The all_symmetric sentinel, spelled out, must behave exactly like the omitted default, and a single
+	// Symmetry like a per-partition range whose every entry is that Symmetry.
+	const util::Dimensions dims{ 4, 4, 3, 3 };
+	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+
+	const std::size_t symmetric = num_orbits(dims, parts);
+	EXPECT_EQ(num_orbits(dims, parts, all_symmetric), symmetric);
+	EXPECT_EQ(num_orbits(dims, parts, Symmetry::Symm), symmetric);
+
+	const std::vector< Symmetry > all_anti{ Symmetry::Antisymm, Symmetry::Antisymm };
+	const std::size_t antisymmetric = num_orbits(dims, parts, Symmetry::Antisymm);
+	ASSERT_EQ(antisymmetric, num_orbits(dims, parts, all_anti));
+
+	// rank/unrank round-trip under each spelling of the sign argument.
+	for (std::size_t r = 0; r < symmetric; ++r) {
+		const auto idx = unrank(r, dims, parts, all_symmetric);
+		EXPECT_TRUE(is_canonical(idx, parts, Symmetry::Symm));
+		EXPECT_EQ(rank(idx, dims, parts, Symmetry::Symm), r);
+	}
+	for (std::size_t r = 0; r < antisymmetric; ++r) {
+		const auto idx = unrank(r, dims, parts, Symmetry::Antisymm);
+		EXPECT_TRUE(is_canonical(idx, parts, all_anti));
+		EXPECT_EQ(rank(idx, dims, parts, all_anti), r);
+	}
+}
+
 namespace {
 	// The scratch-buffer overloads are documented as usable in a constant-evaluated context; this exercises
 	// them (with std::array scratch, which has no .size() member) at compile time.

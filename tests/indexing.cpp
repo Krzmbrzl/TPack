@@ -105,6 +105,24 @@ TEST(TPack, AntisymmetricCanonicalizePhase) {
 	EXPECT_EQ(canonicalize(e, parts), 1);
 }
 
+TEST(TPack, CanonicalizeExplicitSignSpecs) {
+	const util::PartitionList parts{ { { 0, 1, 2 } } };
+
+	// The explicit all_symmetric sentinel matches the omitted default (phase always +1).
+	std::vector< std::size_t > a{ 0, 2, 1 };
+	EXPECT_EQ(canonicalize(a, parts, all_symmetric), 1);
+	EXPECT_EQ(a, (std::vector< std::size_t >{ 2, 1, 0 }));
+
+	// A single Symmetry applies to every partition: Symm never flips the sign, Antisymm tracks parity.
+	std::vector< std::size_t > b{ 0, 2, 1 };
+	EXPECT_EQ(canonicalize(b, parts, Symmetry::Symm), 1);
+	EXPECT_EQ(b, (std::vector< std::size_t >{ 2, 1, 0 }));
+
+	std::vector< std::size_t > c{ 1, 2, 0 }; // one transposition from the canonical {2, 1, 0}
+	EXPECT_EQ(canonicalize(c, parts, Symmetry::Antisymm), -1);
+	EXPECT_EQ(c, (std::vector< std::size_t >{ 2, 1, 0 }));
+}
+
 TEST(TPack, AntisymmetricIsCanonical) {
 	const util::PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
