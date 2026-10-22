@@ -5,7 +5,7 @@ in namespace `tpack`; helpers under `tpack::details` are implementation details 
 
 | Header | Public API |
 | --- | --- |
-| `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative` |
+| `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative`, `OrbitStep` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
 | `<tpack/partition.hpp>` | `sort_partition`, `IndexOrder` |
@@ -136,17 +136,18 @@ thread-local allocation in hot loops; those overloads are `constexpr`.
 ### `is_canonical` / `next_orbit_representative`
 
 ```
-bool is_canonical(idx, partitions, signs = {});
-bool next_orbit_representative(idx, parts, signs = {}, phase = nullptr);
+bool      is_canonical(idx, partitions, signs = {});
+OrbitStep next_orbit_representative(idx, parts, signs = {}, phase = 1);
 ```
 
 `is_canonical` reports whether an indexing is the chosen representative for its orbit TPack chose for storage — namely one whose columns are
 non-increasing in reverse-lexicographic order within every partition (strictly decreasing for antisymmetric partitions).
 
-`next_orbit_representative` walks the orbit: starting from any member, each call advances `idx` in place to the next member and returns `true`; the
-call that exhausts the orbit returns `false` and restores `idx` to the canonical representative. It is the tool for _scattering_ a packed value to all
-the dense positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use
-`canonicalize`.
+`next_orbit_representative` walks the orbit: starting from any member, each call advances `idx` in place to the next member and returns an `OrbitStep`
+that is `true` while further members remain; the call that exhausts the orbit returns an `OrbitStep` that is `false` and restores `idx` to the canonical
+representative. The returned `OrbitStep::phase` carries the antisymmetric sign of the advanced `idx` (feed it back in as the next call's `phase`; it is
+`+1` at the canonical representative and can be ignored for a purely symmetric orbit). It is the tool for _scattering_ a packed value to all the dense
+positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use `canonicalize`.
 
 <!-- tpack-snippet: name=usage_enumerate headers="iostream" -->
 ```cpp
@@ -259,7 +260,8 @@ antisymmetric partition:
   *strictly* decreasing column tuples, and `num_orbits`/`rank`/`unrank` count and address them *without repetition* (`C(d, k)` instead of
   `C(d + k - 1, k)`). `orbit_size` reports `0` for a vanishing indexing.
 - **Phase.** An arbitrary indexing equals `(-1)^p` times its canonical representative. `canonicalize` returns that phase — `+1`, `-1`, or `0` when the
-  element vanishes — and `next_orbit_representative` keeps a running `phase` (initialise it to `+1` at the canonical representative). `rank` itself
+  element vanishes — and `next_orbit_representative` threads a running `phase` through its argument and `OrbitStep::phase` result (start it at `+1` at
+  the canonical representative). `rank` itself
   needs no phase: canonicalise first, keep the returned sign, then rank the canonical indexing.
 
 <!-- tpack-snippet: name=usage_antisymmetric headers="iostream" -->

@@ -118,19 +118,34 @@ namespace details {
 } // namespace details
 
 /**
+ * @brief The result of advancing an indexing with next_orbit_representative.
+ *
+ * Convertible to @c bool so it can drive a loop condition: @c true while the orbit has further
+ * representatives. @c phase carries the running antisymmetric sign of the (advanced) indexing; it is always
+ * valid, including on the final step that restores the canonical representative.
+ */
+struct OrbitStep {
+	/// The antisymmetric sign (@c +1 or @c -1) of the indexing after the step.
+	int phase;
+	/// Whether the indexing was advanced to a further representative (rather than reset to canonical).
+	bool has_more;
+
+	explicit constexpr operator bool() const { return has_more; }
+};
+
+/**
  * @brief Advances an indexing to the next representative of its symmetry orbit.
  *
  * Starting from any representative, repeated calls enumerate every member of the orbit exactly once and,
- * on the final call, restore @p idx to its canonical representative while returning @c false. Columns of the
- * last partition vary fastest; when a partition exhausts its permutations the enumeration carries over into
- * the next one, so the partitions behave like digits of a mixed-radix counter.
+ * on the final call, restore @p idx to its canonical representative while reporting @c has_more == false.
+ * Columns of the last partition vary fastest; when a partition exhausts its permutations the enumeration
+ * carries over into the next one, so the partitions behave like digits of a mixed-radix counter.
  *
- * When a @p phase pointer is supplied, the running antisymmetric sign is maintained in @c *phase: on each
- * advance it is multiplied by the parity of the column permutation applied to the antisymmetric partitions,
- * so @c *phase always equals @c (-1) raised to the number of column transpositions (over all antisymmetric
- * partitions) separating @p idx from the canonical representative. The caller must initialise @c *phase to
- * that value before the first call; starting the enumeration at the canonical representative, that value is
- * @c +1. Symmetric partitions never contribute a sign.
+ * The running antisymmetric sign is threaded through @p phase: pass the sign of @p idx relative to canonical
+ * (@c +1 when starting at the canonical representative), and the returned OrbitStep::phase is the sign of the
+ * advanced @p idx, which the caller feeds into the next call. It equals @c (-1) raised to the number of
+ * column transpositions (over all antisymmetric partitions) separating @p idx from canonical. Symmetric
+ * partitions never contribute a sign, so the phase can be ignored entirely for a purely symmetric orbit.
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
@@ -140,18 +155,17 @@ namespace details {
  * @param parts The symmetry partitions.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
  *        partitions symmetric.
- * @param phase [in,out] Optional pointer to the running antisymmetric sign (@c +1 or @c -1). When supplied it
- *        must be initialised to the sign of @p idx relative to canonical before the first call (@c +1 when
- *        starting from the canonical representative); it is updated in step with @p idx.
- * @return @c true if @p idx was advanced to a further representative, @c false once the orbit is exhausted
- *         (in which case @p idx has been reset to the canonical representative).
+ * @param phase The antisymmetric sign of @p idx relative to canonical before the step (@c +1 at canonical).
+ * @return An OrbitStep whose @c has_more is @c true if @p idx was advanced to a further representative and
+ *         @c false once the orbit is exhausted (in which case @p idx has been reset to the canonical
+ *         representative), and whose @c phase is the sign of the resulting @p idx.
  *
- * @see is_canonical
+ * @see is_canonical, OrbitStep
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
 		  details::signs_spec Signs = details::all_symmetric_t >
-constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
-										 const Signs &signs = details::all_symmetric, int *phase = nullptr) {
+constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts,
+											  const Signs &signs = details::all_symmetric, int phase = 1) {
 	details::assert_signs_match(signs, parts);
 
 	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
@@ -162,19 +176,19 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
 
 		details::LevelColumnsIndexingView columns(part_levels, idx);
 
-		if (phase && antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
-			*phase = -*phase;
+		if (antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
+			phase = -phase;
 		}
 
 		auto [_, has_more] = std::ranges::next_permutation(columns, std::greater<>{});
 		if (has_more) {
-			return true;
+			return { phase, true };
 		}
 		// wrap around to next partition
 	}
 
 	// All candidates have been produced -> indexing is now transformed (back) to canonical representative
-	return false;
+	return { phase, false };
 }
 
 /**
