@@ -90,14 +90,9 @@ constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Si
 		const std::size_t num_cols = size(*begin(part_levels));
 		++part_index;
 
+		auto key = [&](std::size_t slot) -> decltype(auto) { return indexing[slot]; };
 		auto cmp = [&](std::size_t lhs, std::size_t rhs) {
-			for (auto &&level : std::ranges::views::reverse(part_levels)) {
-				if (indexing[level[lhs]] != indexing[level[rhs]]) {
-					return indexing[level[lhs]] > indexing[level[rhs]];
-				}
-			}
-
-			return false;
+			return details::reverse_lex_compare(part_levels, lhs, rhs, key) > 0;
 		};
 
 		std::vector< std::size_t > order(num_cols, 0);
