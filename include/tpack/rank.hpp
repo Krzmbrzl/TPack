@@ -152,7 +152,7 @@ requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > cons
 		const std::size_t effective_size = details::num_columns(part_levels);
 		const std::size_t effective_dim  = details::effective_dim(dims, part_levels);
 		assert(size(effective_idx) >= effective_size);
-		std::ranges::fill(effective_idx, 0);
+		std::ranges::fill(effective_idx | std::ranges::views::take(effective_size), 0);
 
 		for (std::size_t k = 0; k < effective_size; ++k) {
 			std::size_t col_stride = 1;
@@ -314,9 +314,9 @@ requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > cons
 		rank -= current_rank * part_stride;
 
 		// Unrank current_rank into effective indexing
-		[[maybe_unused]] const std::size_t effective_size = details::num_columns(part_levels);
+		const std::size_t effective_size = details::num_columns(part_levels);
 		assert(size(effective_idx) >= effective_size);
-		std::ranges::fill(effective_idx, 0);
+		std::ranges::fill(effective_idx | std::ranges::views::take(effective_size), 0);
 
 		// A symmetric decode stops once the rank is exhausted, leaving the remaining (smallest) columns at 0.
 		// An antisymmetric decode must visit every column: the exhausted tail is not all-zero but the minimal
