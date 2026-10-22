@@ -11,9 +11,11 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <limits>
 #include <ranges>
+#include <type_traits>
 #include <vector>
 
 namespace tpack {
@@ -47,6 +49,33 @@ namespace details {
 		}
 
 		return true;
+	}
+
+	/**
+	 * @brief A caller-provided scratch buffer for the collapsed effective index: a random-access range of
+	 *        std::size_t.
+	 *
+	 * Constraining the scratch parameter positively (rather than as "not a signs spec") keeps the
+	 * scratch-taking rank()/unrank() overloads unambiguous against the ones taking only a sign argument,
+	 * without depending on what a sign spec happens not to be.
+	 */
+	template< typename T >
+	concept index_scratch =
+		std::ranges::random_access_range< T > &&std::same_as< std::ranges::range_value_t< T >, std::size_t >;
+
+	/**
+	 * @brief Returns a thread-local scratch buffer of at least @p n elements for the convenience overloads.
+	 *
+	 * The buffer is reused across calls on the same thread, so the convenience rank()/unrank() overloads avoid
+	 * per-call allocation. Its contents carry no meaning between calls.
+	 *
+	 * @param n The number of elements the buffer must hold.
+	 * @return A reference to the thread-local buffer, resized to @p n.
+	 */
+	inline std::vector< std::size_t > &index_scratch_buffer(std::size_t n) {
+		static thread_local std::vector< std::size_t > buffer;
+		buffer.resize(n);
+		return buffer;
 	}
 
 } // namespace details
@@ -88,7 +117,7 @@ namespace details {
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
 		  details::signs_spec Signs = details::all_symmetric_t >
-requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) constexpr std::size_t
+requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr std::size_t
 	rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
 		 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
@@ -176,13 +205,9 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
 		  std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
 std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
 	using std::ranges::size;
 
-	static thread_local std::vector< std::size_t > effective_idx;
-	effective_idx.resize(size(idx));
-
-	return rank(idx, dims, parts, effective_idx, signs);
+	return rank(idx, dims, parts, details::index_scratch_buffer(size(idx)), signs);
 }
 
 
@@ -225,9 +250,9 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Si
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
 		  details::signs_spec Signs = details::all_symmetric_t >
-requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) constexpr void unrank(
-	Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
-	const Signs &signs = details::all_symmetric) {
+requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr void
+	unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
+		   const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -371,13 +396,9 @@ template< std::ranges::random_access_range Indexing, std::ranges::random_access_
 		  std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
 void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts,
 			const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
 	using std::ranges::size;
 
-	static thread_local std::vector< std::size_t > effective_idx;
-	effective_idx.resize(size(dims));
-
-	unrank(idx, rank, dims, parts, effective_idx, signs);
+	unrank(idx, rank, dims, parts, details::index_scratch_buffer(size(dims)), signs);
 }
 
 /**
