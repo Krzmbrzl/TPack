@@ -17,6 +17,7 @@
 #include <map>
 #include <numeric>
 #include <ranges>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -39,6 +40,29 @@ template< typename Label, typename Combine > struct Constraint {
 	Label identity;
 	Label target;
 };
+
+/**
+ * @brief Builds a Constraint whose group product is the bitwise XOR of the labels.
+ *
+ * This is the common case for abelian point groups, where irreps are XOR-combined bitmasks and the totally
+ * symmetric irrep is the all-zero mask. Works for an integral or an enumeration @c Label.
+ *
+ * @tparam Label The symmetry label type (integral or enum).
+ * @param identity The totally symmetric label, i.e. the fold's seed (usually all-zero).
+ * @param target The required combined label of the stored quantity.
+ * @return A Constraint using bitwise XOR as its @c combine.
+ */
+template< typename Label > constexpr auto xor_constraint(Label identity, Label target) {
+	constexpr auto combine = [](Label lhs, Label rhs) {
+		if constexpr (std::is_enum_v< Label >) {
+			using U = std::underlying_type_t< Label >;
+			return static_cast< Label >(static_cast< U >(lhs) ^ static_cast< U >(rhs));
+		} else {
+			return static_cast< Label >(lhs ^ rhs);
+		}
+	};
+	return Constraint{ combine, identity, target };
+}
 
 /**
  * @brief Sector-graded packed layout for a tensor whose indices carry symmetry labels.

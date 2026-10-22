@@ -12,7 +12,7 @@ the entire public API at once, or include the individual headers below.
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
 | `<tpack/partition.hpp>` | `sort_partition`, `IndexOrder` |
 | `<tpack/labeled.hpp>` | `Labeled` |
-| `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint` |
+| `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint`, `xor_constraint` |
 
 ## Describing a symmetry
 
@@ -301,7 +301,8 @@ assignment — and maps a canonical labelled indexing to and from a contiguous r
 what remains is the ordinary integer packing of the local indices, which it delegates to [`num_orbits`/`rank`/`unrank`](#the-public-functions).
 
 It is constructed from per-slot `label -> count` dimensions (any range of `{label, count}` pairs; labels absent from a slot simply do not occur
-there), the usual partitions and `signs`, and a `tpack::Constraint{combine, identity, target}` describing the group product.
+there), the usual partitions and `signs`, and a `tpack::Constraint{combine, identity, target}` describing the group product. For the common abelian
+point-group case, `tpack::xor_constraint(identity, target)` builds a `Constraint` whose `combine` is the bitwise XOR of the labels.
 
 <!-- tpack-snippet: name=usage_labeled mode=program -->
 ```cpp
@@ -326,9 +327,8 @@ int main() {
 	const std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
 
 	// Abelian selection rule: the XOR of the two labels must be 0 (the totally symmetric irrep).
-	const auto xor_combine = [](Label a, Label b) { return a ^ b; };
 	const tpack::SectorLayout<Label> layout(dims, partitions,
-											tpack::Constraint{xor_combine, /*identity=*/0, /*target=*/0});
+											tpack::xor_constraint(/*identity=*/0, /*target=*/0));
 
 	// Only the label-diagonal sectors (0, 0) and (1, 1) satisfy the rule; each is a symmetric pair over two
 	// locals, C(3, 2) = 3 entries, so the packed size is 6.
