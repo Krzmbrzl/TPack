@@ -312,6 +312,21 @@ TEST(TPack, AntisymmetricOrbitCount) {
 			  0u);
 }
 
+TEST(TPack, OrbitCountDegenerate) {
+	// An index of extent 0 contributes no values, so the tensor has no entries. The symmetric case must not
+	// trip the binomial precondition; it simply reports an empty orbit space.
+	EXPECT_EQ(num_orbits(util::Dimensions{ 0 }, util::PartitionList{ { { 0 } } }), 0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 3, 0 }, util::PartitionList{ { { 0 } }, { { 1 } } }), 0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 0, 0 }, util::PartitionList{ { { 0, 1 } } },
+						 std::vector< Symmetry >{ Symmetry::Antisymm }),
+			  0u);
+
+	// A partition with no levels (hence no columns) addresses nothing and contributes a factor of 1, leaving
+	// the surrounding orbit count unchanged.
+	EXPECT_EQ(num_orbits(util::Dimensions{ 3 }, util::PartitionList{ { { 0 } }, util::Partition{} }),
+			  num_orbits(util::Dimensions{ 3 }, util::PartitionList{ { { 0 } } }));
+}
+
 TEST(TPack, SignSpecScalarForm) {
 	const util::Dimensions dims{ 4, 4, 3, 3 };
 	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };

@@ -106,9 +106,10 @@ constexpr void assert_signs_match([[maybe_unused]] const Signs &signs, [[maybe_u
  * @brief Number of canonical length-@p k sequences drawn from @p n values.
  *
  * A symmetric partition's canonical columns are non-increasing, so they are size-@p k multisets over @p n
- * values (@f$\binom{n + k - 1}{k}@f$). An antisymmetric partition's columns must be strictly decreasing, so
- * they are plain @p k -combinations without repetition (@f$\binom{n}{k}@f$), which is zero when there are
- * fewer values than columns.
+ * values (@f$\binom{n + k - 1}{k}@f$); with no values to draw from (@p n == 0) the only such sequence is the
+ * empty one, so the count is 1 for @p k == 0 and 0 otherwise. An antisymmetric partition's columns must be
+ * strictly decreasing, so they are plain @p k -combinations without repetition (@f$\binom{n}{k}@f$), which is
+ * zero when there are fewer values than columns.
  *
  * This counts both the canonical representatives of a whole partition (@p n the effective column dimension,
  * @p k the number of columns) and, used as a combinatorial-number-system term, the sequences ordered before a
@@ -122,6 +123,12 @@ constexpr void assert_signs_match([[maybe_unused]] const Signs &signs, [[maybe_u
 constexpr std::size_t canonical_count(std::size_t n, std::size_t k, bool antisym) {
 	if (antisym) {
 		return n >= k ? binomial(n, k) : 0;
+	}
+
+	// With no values to draw from, only the empty sequence is canonical; this also avoids the n + k - 1
+	// underflow that would feed binomial a bogus argument.
+	if (n == 0) {
+		return k == 0 ? 1 : 0;
 	}
 
 	return binomial(n + k - 1, k);
