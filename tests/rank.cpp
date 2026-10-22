@@ -175,7 +175,7 @@ TEST(TPack, AntisymmetricScratchBufferOverloads) {
 
 	for (std::size_t r = 0; r < n; ++r) {
 		std::vector< std::size_t > idx(dims.size());
-		unrank(idx, r, dims, parts, effective_idx, signs);
+		unrank(r, idx, dims, parts, effective_idx, signs);
 
 		EXPECT_TRUE(is_canonical(idx, parts, signs));
 		EXPECT_EQ(rank(idx, dims, parts, effective_idx, signs), r);

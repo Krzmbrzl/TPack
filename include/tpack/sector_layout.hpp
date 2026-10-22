@@ -208,7 +208,7 @@ public:
 		const Block &block       = m_blocks[sector];
 
 		std::vector< std::size_t > locals(m_num_slots, 0);
-		tpack::unrank(locals, r - m_sectors[sector].offset, block.local_dims, block.run_parts, block.run_signs);
+		tpack::unrank(r - m_sectors[sector].offset, locals, block.local_dims, block.run_parts, block.run_signs);
 
 		std::ranges::transform(m_sectors[sector].labels, locals, std::ranges::begin(idx),
 							   [](const Label &label, std::size_t local) {

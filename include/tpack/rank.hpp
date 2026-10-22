@@ -78,6 +78,16 @@ namespace details {
 		return buffer;
 	}
 
+	/**
+	 * @brief A partition specification: a range of partitions, each itself a range of levels.
+	 *
+	 * Used to constrain the in-place unrank() overloads so that, with the rank passed first, a sign range
+	 * (a range of Symmetry) can never be mistaken for the partitions argument during overload resolution
+	 * against the return-by-value overload.
+	 */
+	template< typename T >
+	concept partitions_spec = std::ranges::range< T > &&std::ranges::range< std::ranges::range_value_t< T > >;
+
 } // namespace details
 
 /**
@@ -233,8 +243,8 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Si
  * @tparam Partitions A range of partitions describing the symmetry.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param idx [out] Overwritten with the reconstructed canonical indexing.
  * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
+ * @param idx [out] Overwritten with the reconstructed canonical indexing.
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
  * @param effective_idx Scratch buffer; must hold at least as many elements as the largest partition has
@@ -248,10 +258,10 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Si
  * @see rank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+		  std::ranges::random_access_range Dimensions, details::partitions_spec Partitions,
 		  details::signs_spec Signs = details::all_symmetric_t >
 requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr void
-	unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
+	unrank(std::size_t rank, Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
 		   const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
@@ -374,15 +384,15 @@ requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > cons
  * @brief Reconstructs the canonical indexing from a rank, managing scratch storage internally.
  *
  * Convenience overload that reuses a thread-local scratch buffer and otherwise behaves exactly like
- * unrank(Indexing&&, std::size_t, Dimensions&&, Partitions&&, EffectiveIndexing&&, const Signs&).
+ * unrank(std::size_t, Indexing&&, Dimensions&&, Partitions&&, EffectiveIndexing&&, const Signs&).
  *
  * @tparam Indexing A random-access range receiving one index value per tensor index.
  * @tparam Dimensions A random-access range mapping each index to its dimension.
  * @tparam Partitions A range of partitions describing the symmetry.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param idx [out] Overwritten with the reconstructed canonical indexing.
  * @param rank The rank to decode; must lie in @c [0, num_orbits(dims, parts, signs)).
+ * @param idx [out] Overwritten with the reconstructed canonical indexing.
  * @param dims The dimension of every index.
  * @param parts The symmetry partitions.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
@@ -393,12 +403,12 @@ requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > cons
  * @see rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
-void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&parts,
+		  details::partitions_spec Partitions, details::signs_spec Signs = details::all_symmetric_t >
+void unrank(std::size_t rank, Indexing &&idx, Dimensions &&dims, Partitions &&parts,
 			const Signs &signs = details::all_symmetric) {
 	using std::ranges::size;
 
-	unrank(idx, rank, dims, parts, details::index_scratch_buffer(size(dims)), signs);
+	unrank(rank, idx, dims, parts, details::index_scratch_buffer(size(dims)), signs);
 }
 
 /**
@@ -423,7 +433,7 @@ void unrank(Indexing &&idx, std::size_t rank, Dimensions &&dims, Partitions &&pa
  * @see rank
  */
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+		  std::ranges::random_access_range Dimensions, details::partitions_spec Partitions,
 		  details::signs_spec Signs = details::all_symmetric_t >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
 	using std::ranges::size;
@@ -431,7 +441,7 @@ Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts, const S
 	Indexing idx;
 	idx.resize(size(dims));
 
-	unrank(idx, rank, dims, parts, signs);
+	unrank(rank, idx, dims, parts, signs);
 
 	return idx;
 }

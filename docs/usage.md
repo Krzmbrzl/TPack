@@ -103,7 +103,7 @@ assert(tpack::num_orbits(dims, partitions) == 15);  // C(5 + 2 - 1, 2) = C(6, 2)
 ```
 std::size_t rank(idx, dims, parts, signs = {});        // canonical indexing -> packed offset
 Indexing    unrank(rank, dims, parts, signs = {});     // packed offset -> canonical indexing
-void        unrank(idx, rank, dims, parts, signs = {});// write into a caller-provided buffer
+void        unrank(rank, idx, dims, parts, signs = {});// write into a caller-provided buffer
 ```
 
 `rank` maps a **canonical** indexing to its packed storage offset in `[0, num_orbits(dims, parts))`; `unrank` is the exact inverse and always returns
