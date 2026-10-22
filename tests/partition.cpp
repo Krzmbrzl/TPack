@@ -56,9 +56,9 @@ TEST(TPack, PartitionTest_consistency) {
 
 
 	auto col_sorted = partitions;
-	sort_partition(col_sorted);
+	sort_partitions(col_sorted);
 	auto row_sorted = partitions;
-	sort_partition< tpack::IndexOrder::RowMajor >(row_sorted);
+	sort_partitions< tpack::IndexOrder::RowMajor >(row_sorted);
 
 	decltype(data)::value_type ref_sum = 0;
 	decltype(data)::value_type col_sum = 0;
@@ -92,13 +92,13 @@ struct PartitionTest : testing::TestWithParam< std::tuple< util::PartitionList, 
 };
 
 
-TEST_P(PartitionTest, sort_partition) {
+TEST_P(PartitionTest, sort_partitions) {
 	auto [actual, expected, col_major] = GetParam();
 
 	if (col_major) {
-		sort_partition(actual);
+		sort_partitions(actual);
 	} else {
-		sort_partition< tpack::IndexOrder::RowMajor >(actual);
+		sort_partitions< tpack::IndexOrder::RowMajor >(actual);
 	}
 
 	EXPECT_EQ(expected, actual);
@@ -131,7 +131,7 @@ TEST(TPack, SortPartitionReordersSignsInLockstep) {
 	util::PartitionList parts{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
 	std::vector< Symmetry > signs{ Symmetry::Antisymm, Symmetry::Symm, Symmetry::Antisymm };
 
-	sort_partition(parts, signs);
+	sort_partitions(parts, signs);
 
 	// Ordered by smallest index; single-level columns sorted descending within each level
 	EXPECT_EQ(parts, (util::PartitionList{ { { 1, 0 } }, { { 3, 2 } }, { { 5, 4 } } }));
@@ -140,7 +140,7 @@ TEST(TPack, SortPartitionReordersSignsInLockstep) {
 	util::PartitionList parts_row{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
 	std::vector< Symmetry > signs_row{ Symmetry::Antisymm, Symmetry::Symm, Symmetry::Antisymm };
 
-	sort_partition< tpack::IndexOrder::RowMajor >(parts_row, signs_row);
+	sort_partitions< tpack::IndexOrder::RowMajor >(parts_row, signs_row);
 
 	EXPECT_EQ(parts_row, (util::PartitionList{ { { 4, 5 } }, { { 2, 3 } }, { { 0, 1 } } }));
 	EXPECT_EQ(signs_row, (std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Antisymm, Symmetry::Symm }));

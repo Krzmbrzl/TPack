@@ -10,7 +10,7 @@ the entire public API at once, or include the individual headers below.
 | `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative`, `OrbitStep` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
-| `<tpack/partition.hpp>` | `sort_partition`, `IndexOrder` |
+| `<tpack/partition.hpp>` | `sort_partitions`, `IndexOrder` |
 | `<tpack/labeled.hpp>` | `Labeled` |
 | `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint`, `xor_constraint` |
 
@@ -238,11 +238,11 @@ assert((idx == std::vector<std::size_t>{2, 1, 0}));  // columns now non-increasi
 assert(tpack::rank(idx, dims, partitions) < tpack::num_orbits(dims, partitions));
 ```
 
-### `sort_partition`
+### `sort_partitions`
 
 ```
 template <IndexOrder Order = IndexOrder::ColumnMajor>
-void sort_partition(partitions, signs = {});
+void sort_partitions(partitions, signs = {});
 ```
 
 This sorts the way a partition is expressed so that accessing the represented tensor (during read or write) happens in accordance with its storage
@@ -251,14 +251,14 @@ order (as far as possible, that is). The `Order` template argument selects the s
 identical, which keeps the `rank`/`unrank` layout stable regardless of the order the caller happened to list indices, levels and partitions in. If a
 `signs` array is passed it is reordered in lockstep with the partitions, so each partition keeps its antisymmetry flag.
 
-<!-- tpack-snippet: name=usage_sort_partition -->
+<!-- tpack-snippet: name=usage_sort_partitions -->
 ```cpp
 std::vector<std::vector<std::vector<std::size_t>>> a = {{{0, 1}}};
 std::vector<std::vector<std::vector<std::size_t>>> b = {{{1, 0}}};
 
 // Both describe the same symmetric pair; normalising makes them identical.
-tpack::sort_partition(a);
-tpack::sort_partition(b);
+tpack::sort_partitions(a);
+tpack::sort_partitions(b);
 assert(a == b);
 ```
 
