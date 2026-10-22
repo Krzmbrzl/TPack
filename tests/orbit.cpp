@@ -312,29 +312,22 @@ TEST(TPack, AntisymmetricOrbitCount) {
 			  0u);
 }
 
-TEST(TPack, SignSpecScalarAndIntForms) {
+TEST(TPack, SignSpecScalarForm) {
 	const util::Dimensions dims{ 4, 4, 3, 3 };
 	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
 
 	// A single Symmetry applies to every partition, matching an all-antisymmetric range.
 	EXPECT_EQ(num_orbits(dims, parts, Symmetry::Antisymm),
 			  num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Antisymm }));
-
-	// The enumerators (and hence a range or scalar) convert implicitly from the sign of a permutation.
-	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ -1, 1 }),
-			  num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Symm }));
-	EXPECT_EQ(num_orbits(dims, parts, -1), num_orbits(dims, parts, Symmetry::Antisymm));
 }
 
 TEST(TPack, SymmetryStaticCastToInt) {
 	EXPECT_EQ(static_cast< int >(Symmetry{ Symmetry::Symm }), 1);
 	EXPECT_EQ(static_cast< int >(Symmetry{ Symmetry::Antisymm }), -1);
 
-	// Casting a Symmetry matches casting its underlying value, and round-trips through the integer-sign
-	// constructor.
+	// Casting a Symmetry matches casting its underlying value.
 	for (const Symmetry s : { Symmetry::Symm, Symmetry::Antisymm }) {
 		EXPECT_EQ(static_cast< int >(s), static_cast< int >(s.value));
-		EXPECT_EQ(Symmetry(static_cast< int >(s)), s);
 	}
 }
 

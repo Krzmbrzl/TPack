@@ -15,10 +15,10 @@ namespace tpack {
 /**
  * @brief Per-partition flag selecting whether a partition is symmetric or antisymmetric.
  *
- * Wraps a two-valued enumerator and converts implicitly from the integer sign of a permutation
- * (@c +1 -> @c Symm, @c -1 -> @c Antisymm), so a sign array can be written either with the enumerators
- * (@c {Symmetry::Antisymm, ...}) or with plain signs (@c {-1, ...}). The enumerator values are chosen so that
- * @c static_cast<int> recovers that sign, whether applied to a @c Symmetry or to its @c value.
+ * Wraps a two-valued enumerator whose underlying values are the integer sign of a permutation
+ * (@c Symm == @c +1, @c Antisymm == @c -1), so a sign array is written with the enumerators
+ * (@c {Symmetry::Antisymm, ...}) and @c static_cast<int> recovers the sign, whether applied to a @c Symmetry
+ * or to its @c value.
  */
 struct Symmetry {
 	enum Value : int { Symm = 1, Antisymm = -1 };
@@ -26,9 +26,6 @@ struct Symmetry {
 	Value value;
 
 	constexpr Symmetry(Value v) : value(v) {}
-
-	/// @param sign The integer sign of a permutation; must be exactly @c +1 or @c -1.
-	constexpr Symmetry(int sign) : value(sign < 0 ? Antisymm : Symm) { assert(sign == 1 || sign == -1); }
 
 	/// @return The integer sign of the symmetry (@c +1 for @c Symm, @c -1 for @c Antisymm).
 	constexpr explicit operator int() const { return value; }

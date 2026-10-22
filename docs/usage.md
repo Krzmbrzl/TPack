@@ -251,8 +251,7 @@ permuting its columns multiplies the value by the sign (parity) of the permutati
 partition is a whole symmetric group acting on its columns, antisymmetry is a property of the partition as a whole.
 
 Antisymmetry is passed via the trailing `signs` argument that every function accepts: a range with one `tpack::Symmetry` per partition
-(`Symmetry::Antisymm` or `Symmetry::Symm`). A single `Symmetry` may be passed instead to apply it to every partition, and the enumerators convert
-implicitly from the integer sign of a permutation (`+1` = symmetric, `-1` = antisymmetric), so `{-1}` is accepted too. A range-valued `signs` must have
+(`Symmetry::Antisymm` or `Symmetry::Symm`). A single `Symmetry` may be passed instead to apply it to every partition. A range-valued `signs` must have
 exactly one entry per partition. Omitting the argument means all partitions are symmetric, so existing code is unaffected. Two things change for an
 antisymmetric partition:
 
