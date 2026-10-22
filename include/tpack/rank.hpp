@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tpack/details/binomial.hpp>
+#include <tpack/details/canonical.hpp>
 #include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 #include <tpack/indexing.hpp>
@@ -124,10 +125,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 		// If effective_idx is not sorted, idx wasn't canonical; an antisymmetric partition must in addition be
 		// strictly decreasing (no equal columns, which would vanish)
-		assert(std::ranges::is_sorted(effective_idx | std::ranges::views::take(effective_size), std::greater<>{}));
-		assert(!antisym
-			   || std::ranges::adjacent_find(effective_idx | std::ranges::views::take(effective_size))
-					  == end(effective_idx | std::ranges::views::take(effective_size)));
+		assert(details::is_canonical_sequence(effective_idx | std::ranges::views::take(effective_size), antisym));
 
 		// Compute rank of that effective 1D partition
 		std::size_t current_rank = 0;
@@ -320,11 +318,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 		// In order for a 1D indexing consisting of only a single partition to be canonical, it has to be sorted
 		// (strictly decreasing for an antisymmetric partition).
-		assert(std::ranges::is_sorted(effective_idx | std::ranges::views::take(effective_size), std::greater<>{}));
-		assert(!antisym
-			   || std::ranges::adjacent_find(effective_idx | std::ranges::views::take(effective_size))
-					  == end(effective_idx | std::ranges::views::take(effective_size)));
-
+		assert(details::is_canonical_sequence(effective_idx | std::ranges::views::take(effective_size), antisym));
 
 		// Transform effective indexing into actual indexing by splitting
 		// effective indices back into their individual elements

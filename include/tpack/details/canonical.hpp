@@ -5,9 +5,11 @@
 #include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <compare>
 #include <cstddef>
+#include <functional>
 #include <ranges>
 
 namespace tpack::details {
@@ -52,6 +54,21 @@ constexpr std::strong_ordering reverse_lex_compare(const Levels &part_levels, st
  * rhs) that returns a positive / negative / zero value if column @c lhs is greater / smaller / equal to @c rhs.
  * @return @c true if all partitions are ordered canonically.
  */
+/**
+ * @brief Whether a merged effective index is a canonical single-partition sequence.
+ *
+ * A canonical sequence is non-increasing; an antisymmetric one must in addition be strictly decreasing, since
+ * equal columns make the element vanish. Intended for use inside @c assert.
+ *
+ * @param effective The effective (merged) index sequence of one partition.
+ * @param antisym Whether the partition is antisymmetric.
+ * @return @c true if @p effective is ordered canonically for the given symmetry.
+ */
+template< typename Range > constexpr bool is_canonical_sequence(Range &&effective, bool antisym) {
+	return std::ranges::is_sorted(effective, std::greater<>{})
+		   && (!antisym || std::ranges::adjacent_find(effective) == std::ranges::end(effective));
+}
+
 template< std::ranges::range Partitions, signs_spec Signs, typename CompareColumns >
 constexpr bool is_canonical_by(Partitions &&partitions, const Signs &signs, CompareColumns &&compare_columns) {
 	assert_signs_match(signs, partitions);
