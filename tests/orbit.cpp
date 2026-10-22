@@ -61,7 +61,7 @@ TEST_P(OrbitTest, next_orbit_representative) {
 	EXPECT_TRUE(is_canonical(indexing, info.partitions));
 
 	// The loop above restored the canonical representative, so orbit_size() may use its fast path.
-	const std::size_t orbit = orbit_size(indexing, info.partitions, true);
+	const std::size_t orbit = orbit_size(indexing, info.partitions, all_symmetric, true);
 	if (canonical) {
 		// Started from the canonical representative, enumeration visits the whole orbit.
 		EXPECT_EQ(num_representatives, orbit);
@@ -149,20 +149,19 @@ TEST_P(OrbitTranspositionTest, next_orbit_representative) {
 	// all partitions combined, i.e. (-1) raised to the total number of column inversions.
 	const std::vector< Symmetry > signs(info.partitions.size(), Symmetry::Antisymm);
 
-	int phase     = 1;
-	bool has_more = false;
+	OrbitStep step{ 1, true };
 	do {
-		has_more = next_orbit_representative(indexing, info.partitions, signs, &phase);
+		step = next_orbit_representative(indexing, info.partitions, signs, step.phase);
 
 		std::size_t total_inversions = 0;
 		for (std::size_t i = 0; i < info.partitions.size(); ++i) {
 			total_inversions += num_inversions(indexing, info.partitions[i]);
 		}
-		EXPECT_EQ(phase, total_inversions % 2 == 0 ? 1 : -1);
-	} while (has_more);
+		EXPECT_EQ(step.phase, total_inversions % 2 == 0 ? 1 : -1);
+	} while (step.has_more);
 
 	EXPECT_TRUE(is_canonical(indexing, info.partitions));
-	EXPECT_EQ(phase, 1);
+	EXPECT_EQ(step.phase, 1);
 }
 
 // clang-format off
@@ -198,12 +197,12 @@ TEST_P(OrbitEnumerationTest, next_orbit_representative) {
 
 	std::set< std::vector< std::size_t > > seen;
 	std::size_t count = 0;
-	bool has_more     = true;
+	OrbitStep step{ 1, true };
 	do {
 		EXPECT_TRUE(seen.insert(indexing).second) << "representative visited more than once";
 		++count;
-		has_more = next_orbit_representative(indexing, info.partitions);
-	} while (has_more);
+		step = next_orbit_representative(indexing, info.partitions);
+	} while (step.has_more);
 
 	EXPECT_EQ(count, expected_count);
 	EXPECT_EQ(indexing, canonical);
@@ -249,7 +248,7 @@ TEST_P(OrbitSizeTest, orbit_size) {
 
 	if (is_canon) {
 		ASSERT_TRUE(is_canonical(indexing, info.partitions));
-		EXPECT_EQ(orbit_size(indexing, info.partitions, true), expected);
+		EXPECT_EQ(orbit_size(indexing, info.partitions, all_symmetric, true), expected);
 	}
 }
 
@@ -297,7 +296,7 @@ TEST(TPack, OrbitSizeTest_no_intermediate_overflow) {
 	ASSERT_TRUE(is_canonical(indexing, info.partitions));
 
 	EXPECT_EQ(orbit_size(indexing, info.partitions), std::size_t(352716));
-	EXPECT_EQ(orbit_size(indexing, info.partitions, true), std::size_t(352716));
+	EXPECT_EQ(orbit_size(indexing, info.partitions, all_symmetric, true), std::size_t(352716));
 }
 
 TEST(TPack, AntisymmetricOrbitCount) {
@@ -313,29 +312,37 @@ TEST(TPack, AntisymmetricOrbitCount) {
 			  0u);
 }
 
-TEST(TPack, SignSpecScalarAndIntForms) {
+TEST(TPack, OrbitCountDegenerate) {
+	// An index of extent 0 contributes no values, so the tensor has no entries. The symmetric case must not
+	// trip the binomial precondition; it simply reports an empty orbit space.
+	EXPECT_EQ(num_orbits(util::Dimensions{ 0 }, util::PartitionList{ { { 0 } } }), 0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 3, 0 }, util::PartitionList{ { { 0 } }, { { 1 } } }), 0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 0, 0 }, util::PartitionList{ { { 0, 1 } } },
+						 std::vector< Symmetry >{ Symmetry::Antisymm }),
+			  0u);
+
+	// A partition with no levels (hence no columns) addresses nothing and contributes a factor of 1, leaving
+	// the surrounding orbit count unchanged.
+	EXPECT_EQ(num_orbits(util::Dimensions{ 3 }, util::PartitionList{ { { 0 } }, util::Partition{} }),
+			  num_orbits(util::Dimensions{ 3 }, util::PartitionList{ { { 0 } } }));
+}
+
+TEST(TPack, SignSpecScalarForm) {
 	const util::Dimensions dims{ 4, 4, 3, 3 };
 	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
 
 	// A single Symmetry applies to every partition, matching an all-antisymmetric range.
 	EXPECT_EQ(num_orbits(dims, parts, Symmetry::Antisymm),
 			  num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Antisymm }));
-
-	// The enumerators (and hence a range or scalar) convert implicitly from the sign of a permutation.
-	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ -1, 1 }),
-			  num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Symm }));
-	EXPECT_EQ(num_orbits(dims, parts, -1), num_orbits(dims, parts, Symmetry::Antisymm));
 }
 
 TEST(TPack, SymmetryStaticCastToInt) {
 	EXPECT_EQ(static_cast< int >(Symmetry{ Symmetry::Symm }), 1);
 	EXPECT_EQ(static_cast< int >(Symmetry{ Symmetry::Antisymm }), -1);
 
-	// Casting a Symmetry matches casting its underlying value, and round-trips through the integer-sign
-	// constructor.
+	// Casting a Symmetry matches casting its underlying value.
 	for (const Symmetry s : { Symmetry::Symm, Symmetry::Antisymm }) {
 		EXPECT_EQ(static_cast< int >(s), static_cast< int >(s.value));
-		EXPECT_EQ(Symmetry(static_cast< int >(s)), s);
 	}
 }
 
@@ -343,8 +350,8 @@ TEST(TPack, AntisymmetricOrbitSize) {
 	const util::PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
-	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, false, anti), 2u); // distinct columns -> 2!
-	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, false, anti), 0u); // equal columns -> vanishes
+	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, anti, false), 2u); // distinct columns -> 2!
+	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, anti, false), 0u); // equal columns -> vanishes
 }
 
 TEST(TPack, NextOrbitPhaseMixedSymmetry) {
@@ -356,25 +363,24 @@ TEST(TPack, NextOrbitPhaseMixedSymmetry) {
 	std::vector< std::size_t > indexing{ 3, 1, 2, 0 }; // canonical for both partitions
 	ASSERT_TRUE(is_canonical(indexing, parts, signs));
 
-	int phase           = 1;
+	OrbitStep step{ 1, true };
 	std::size_t members = 0;
-	bool has_more       = false;
 	do {
-		has_more = next_orbit_representative(indexing, parts, signs, &phase);
+		step = next_orbit_representative(indexing, parts, signs, step.phase);
 		++members;
 
 		// Only the antisymmetric partition's inversions fix the sign.
 		const std::size_t antisym_inversions = num_inversions(indexing, parts[1]);
-		EXPECT_EQ(phase, antisym_inversions % 2 == 0 ? 1 : -1);
+		EXPECT_EQ(step.phase, antisym_inversions % 2 == 0 ? 1 : -1);
 
 		// canonicalize must agree on the phase it reports for the same indexing.
 		std::vector< std::size_t > copy = indexing;
-		EXPECT_EQ(canonicalize(copy, parts, signs), phase);
-	} while (has_more);
+		EXPECT_EQ(canonicalize(copy, parts, signs), step.phase);
+	} while (step.has_more);
 
 	EXPECT_EQ(members, 4u); // 2! (symmetric) * 2! (antisymmetric)
 	EXPECT_TRUE(is_canonical(indexing, parts, signs));
-	EXPECT_EQ(phase, 1);
+	EXPECT_EQ(step.phase, 1);
 }
 
 } // namespace tpack::tests

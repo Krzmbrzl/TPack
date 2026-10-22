@@ -63,7 +63,7 @@ static void BM_unrank(benchmark::State &state) {
 	std::vector< std::size_t > indexing(dimensions.size());
 
 	for (auto _ : state) {
-		tpack::unrank(indexing, rank, dimensions, partitions);
+		tpack::unrank(rank, indexing, dimensions, partitions);
 		benchmark::DoNotOptimize(indexing);
 	}
 }
@@ -101,7 +101,7 @@ static void BM_unrank_with_access(benchmark::State &state) {
 
 	for (auto _ : state) {
 		for (std::size_t rank = 0; rank < num_orbits; ++rank) {
-			tpack::unrank(indexing, rank, dimensions, partitions);
+			tpack::unrank(rank, indexing, dimensions, partitions);
 			double element = dummy.at(flat_idx(indexing));
 			benchmark::DoNotOptimize(element);
 		}

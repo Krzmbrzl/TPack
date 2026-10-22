@@ -5,8 +5,10 @@
 #include <tpack/orbit.hpp>
 #include <tpack/rank.hpp>
 
+#include <array>
 #include <cstddef>
 #include <set>
+#include <span>
 #include <tuple>
 #include <vector>
 
@@ -162,8 +164,8 @@ TEST(TPack, AntisymmetricRankRoundTrip) {
 
 TEST(TPack, AntisymmetricScratchBufferOverloads) {
 	// Exercise the explicit scratch-buffer overloads of rank/unrank alongside a sign array. The
-	// requires(!signs_spec<EffectiveIndexing>) constraint must keep the scratch buffer and the sign array
-	// unambiguous during overload resolution.
+	// details::index_scratch constraint must keep the scratch buffer and the sign array unambiguous during
+	// overload resolution.
 	const util::Dimensions dims{ 5, 5, 5 };
 	const util::PartitionList parts{ { { 0, 1, 2 } } };
 	const std::vector< Symmetry > signs{ Symmetry::Antisymm };
@@ -175,11 +177,82 @@ TEST(TPack, AntisymmetricScratchBufferOverloads) {
 
 	for (std::size_t r = 0; r < n; ++r) {
 		std::vector< std::size_t > idx(dims.size());
-		unrank(idx, r, dims, parts, effective_idx, signs);
+		unrank(r, idx, dims, parts, effective_idx, signs);
 
 		EXPECT_TRUE(is_canonical(idx, parts, signs));
 		EXPECT_EQ(rank(idx, dims, parts, effective_idx, signs), r);
 	}
 }
+
+TEST(TPack, ExplicitSignSpecForms) {
+	// The all_symmetric sentinel, spelled out, must behave exactly like the omitted default, and a single
+	// Symmetry like a per-partition range whose every entry is that Symmetry.
+	const util::Dimensions dims{ 4, 4, 3, 3 };
+	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+
+	const std::size_t symmetric = num_orbits(dims, parts);
+	EXPECT_EQ(num_orbits(dims, parts, all_symmetric), symmetric);
+	EXPECT_EQ(num_orbits(dims, parts, Symmetry::Symm), symmetric);
+
+	const std::vector< Symmetry > all_anti{ Symmetry::Antisymm, Symmetry::Antisymm };
+	const std::size_t antisymmetric = num_orbits(dims, parts, Symmetry::Antisymm);
+	ASSERT_EQ(antisymmetric, num_orbits(dims, parts, all_anti));
+
+	// rank/unrank round-trip under each spelling of the sign argument.
+	for (std::size_t r = 0; r < symmetric; ++r) {
+		const auto idx = unrank(r, dims, parts, all_symmetric);
+		EXPECT_TRUE(is_canonical(idx, parts, Symmetry::Symm));
+		EXPECT_EQ(rank(idx, dims, parts, Symmetry::Symm), r);
+	}
+	for (std::size_t r = 0; r < antisymmetric; ++r) {
+		const auto idx = unrank(r, dims, parts, Symmetry::Antisymm);
+		EXPECT_TRUE(is_canonical(idx, parts, all_anti));
+		EXPECT_EQ(rank(idx, dims, parts, all_anti), r);
+	}
+}
+
+TEST(TPack, AlternativeScratchAndIndexingContainers) {
+	const util::Dimensions dims{ 5, 5, 5 };
+	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const std::size_t n = num_orbits(dims, parts);
+
+	// A std::span over caller-owned storage satisfies the index_scratch concept, and a std::array works as the
+	// indexing at runtime (not just in the constexpr test above).
+	std::array< std::size_t, 3 > scratch_storage{};
+	const std::span< std::size_t > scratch(scratch_storage);
+
+	for (std::size_t r = 0; r < n; ++r) {
+		std::array< std::size_t, 3 > idx{};
+		unrank(r, idx, dims, parts, scratch);
+		EXPECT_TRUE(is_canonical(idx, parts));
+		EXPECT_EQ(rank(idx, dims, parts, scratch), r);
+	}
+
+	// An rvalue indexing (a temporary) binds to the forwarding-reference parameter of rank/is_canonical.
+	EXPECT_TRUE(is_canonical(std::vector< std::size_t >{ 4, 2, 1 }, parts));
+	EXPECT_EQ(rank(std::vector< std::size_t >{ 4, 2, 1 }, dims, parts),
+			  rank(std::array< std::size_t, 3 >{ 4, 2, 1 }, dims, parts));
+}
+
+namespace {
+	// The scratch-buffer overloads are documented as usable in a constant-evaluated context; this exercises
+	// them (with std::array scratch, which has no .size() member) at compile time.
+	constexpr bool constexpr_roundtrip() {
+		std::array< std::size_t, 2 > dims{ 4, 4 };
+		std::array< std::array< std::array< std::size_t, 2 >, 1 >, 1 > parts{ { { { { { 0, 1 } } } } } };
+		std::array< std::size_t, 2 > scratch{};
+		std::array< std::size_t, 2 > idx{};
+
+		for (std::size_t r = 0; r < 10; ++r) { // C(4 + 2 - 1, 2) = 10
+			unrank(r, idx, dims, parts, scratch);
+			if (rank(idx, dims, parts, scratch) != r) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static_assert(constexpr_roundtrip(), "rank/unrank must round-trip in a constexpr context");
+} // namespace
 
 } // namespace tpack::tests

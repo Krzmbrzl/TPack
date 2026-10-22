@@ -15,10 +15,10 @@ namespace tpack {
 /**
  * @brief Per-partition flag selecting whether a partition is symmetric or antisymmetric.
  *
- * Wraps a two-valued enumerator and converts implicitly from the integer sign of a permutation
- * (@c +1 -> @c Symm, @c -1 -> @c Antisymm), so a sign array can be written either with the enumerators
- * (@c {Symmetry::Antisymm, ...}) or with plain signs (@c {-1, ...}). The enumerator values are chosen so that
- * @c static_cast<int> recovers that sign, whether applied to a @c Symmetry or to its @c value.
+ * Wraps a two-valued enumerator whose underlying values are the integer sign of a permutation
+ * (@c Symm == @c +1, @c Antisymm == @c -1), so a sign array is written with the enumerators
+ * (@c {Symmetry::Antisymm, ...}) and @c static_cast<int> recovers the sign, whether applied to a @c Symmetry
+ * or to its @c value.
  */
 struct Symmetry {
 	enum Value : int { Symm = 1, Antisymm = -1 };
@@ -27,18 +27,11 @@ struct Symmetry {
 
 	constexpr Symmetry(Value v) : value(v) {}
 
-	/// @param sign The integer sign of a permutation; must be exactly @c +1 or @c -1.
-	constexpr Symmetry(int sign) : value(sign < 0 ? Antisymm : Symm) { assert(sign == 1 || sign == -1); }
-
 	/// @return The integer sign of the symmetry (@c +1 for @c Symm, @c -1 for @c Antisymm).
 	constexpr explicit operator int() const { return value; }
 
 	friend constexpr bool operator==(Symmetry, Symmetry) = default;
 };
-
-} // namespace tpack
-
-namespace tpack::details {
 
 /**
  * @brief Sentinel standing in for a per-partition sign array in which every partition is symmetric.
@@ -64,6 +57,10 @@ concept signs_spec =
 	std::same_as<
 		std::remove_cvref_t< T >,
 		all_symmetric_t > || std::convertible_to< T, Symmetry > || (std::ranges::random_access_range< T > && std::same_as< std::ranges::range_value_t< T >, Symmetry >);
+
+} // namespace tpack
+
+namespace tpack::details {
 
 /**
  * @brief Queries whether partition @p index is antisymmetric.
@@ -106,45 +103,35 @@ constexpr void assert_signs_match([[maybe_unused]] const Signs &signs, [[maybe_u
 }
 
 /**
- * @brief Number of canonical representatives of a single partition.
+ * @brief Number of canonical length-@p k sequences drawn from @p n values.
  *
- * A symmetric partition's canonical columns are non-increasing, so representatives are size-@p num_cols
- * multisets over @p effective_dim values (@f$\binom{d + k - 1}{k}@f$). An antisymmetric partition's columns
- * must be strictly decreasing, so representatives are plain @p num_cols -combinations without repetition
- * (@f$\binom{d}{k}@f$), which is zero when there are fewer values than columns.
+ * A symmetric partition's canonical columns are non-increasing, so they are size-@p k multisets over @p n
+ * values (@f$\binom{n + k - 1}{k}@f$); with no values to draw from (@p n == 0) the only such sequence is the
+ * empty one, so the count is 1 for @p k == 0 and 0 otherwise. An antisymmetric partition's columns must be
+ * strictly decreasing, so they are plain @p k -combinations without repetition (@f$\binom{n}{k}@f$), which is
+ * zero when there are fewer values than columns.
  *
- * @param effective_dim The effective (combined) dimension of a column.
- * @param num_cols The number of columns in the partition.
+ * This counts both the canonical representatives of a whole partition (@p n the effective column dimension,
+ * @p k the number of columns) and, used as a combinatorial-number-system term, the sequences ordered before a
+ * given column (@p n that column's effective index, @p k the columns still to be placed).
+ *
+ * @param n The number of values each column may take.
+ * @param k The number of columns in the sequence.
  * @param antisym Whether the partition is antisymmetric.
- * @return The number of canonical representatives contributed by the partition.
+ * @return The number of canonical length-@p k sequences over @p n values.
  */
-constexpr std::size_t partition_count(std::size_t effective_dim, std::size_t num_cols, bool antisym) {
+constexpr std::size_t canonical_count(std::size_t n, std::size_t k, bool antisym) {
 	if (antisym) {
-		return effective_dim >= num_cols ? binomial(effective_dim, num_cols) : 0;
+		return n >= k ? binomial(n, k) : 0;
 	}
 
-	return binomial(effective_dim + num_cols - 1, num_cols);
-}
-
-/**
- * @brief A single term of the combinatorial-number-system rank of a partition's effective index.
- *
- * For the column currently being ranked, @p remaining_cols is how many columns (including this one) are still
- * to be placed and @p value is this column's effective index. The symmetric ranking addresses non-increasing
- * sequences (@f$\binom{n + k - 1}{k}@f$); the antisymmetric ranking addresses strictly decreasing sequences
- * (@f$\binom{n}{k}@f$, which is zero when @p value < @p remaining_cols).
- *
- * @param value The effective index of the column being ranked.
- * @param remaining_cols The number of columns still to be placed, including the current one.
- * @param antisym Whether the partition is antisymmetric.
- * @return The contribution of this column to the partition rank.
- */
-constexpr std::size_t combinatorial_term(std::size_t value, std::size_t remaining_cols, bool antisym) {
-	if (antisym) {
-		return value >= remaining_cols ? binomial(value, remaining_cols) : 0;
+	// With no values to draw from, only the empty sequence is canonical; this also avoids the n + k - 1
+	// underflow that would feed binomial a bogus argument.
+	if (n == 0) {
+		return k == 0 ? 1 : 0;
 	}
 
-	return binomial(value + remaining_cols - 1, remaining_cols);
+	return binomial(n + k - 1, k);
 }
 
 } // namespace tpack::details

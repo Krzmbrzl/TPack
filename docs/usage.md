@@ -1,14 +1,18 @@
 # Usage
 
 TPack is header-only: add `include/` to your include path (or link the `TPack::TPack` CMake target) and include the headers you need. Everything lives
-in namespace `tpack`; helpers under `tpack::details` are implementation details and not part of the public API.
+in namespace `tpack`; helpers under `tpack::details` are implementation details and not part of the public API. Include `<tpack/tpack.hpp>` to pull in
+the entire public API at once, or include the individual headers below.
 
 | Header | Public API |
 | --- | --- |
-| `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative` |
+| `<tpack/tpack.hpp>` | umbrella header including all of the below |
+| `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative`, `OrbitStep` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
-| `<tpack/partition.hpp>` | `sort_partition_col_major`, `sort_partition_row_major` |
+| `<tpack/partition.hpp>` | `sort_partitions`, `IndexOrder` |
+| `<tpack/labeled.hpp>` | `Labeled` |
+| `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint`, `xor_constraint` |
 
 ## Describing a symmetry
 
@@ -28,6 +32,20 @@ std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
 A level with more than one entry describes a *joint* symmetry: for `partitions = {{{0, 1}, {2, 3}}}` the columns `(0, 2)` and `(1, 3)` are permuted
 together, i.e. swapping index 0 with 1 forces index 2 to swap with 3 — the symmetry of a pair of index pairs such as a two-electron integral
 `(ab|cd)`.
+
+### Preconditions
+
+The descriptors must satisfy a few structural invariants. They are checked by assertions (active only when `NDEBUG` is not defined); in a release
+build, violating them is undefined behaviour rather than a diagnosed error.
+
+- **Rectangular partitions.** Every level of a partition lists the same number of indices — its columns. (A single-level partition is trivially
+  rectangular.)
+- **Uniform level dimension.** Every index within one level must share the same dimension, since the level collapses to a single effective dimension.
+- **Full coverage.** The partitions must reference every index of the tensor exactly once. An index that carries no symmetry is given its own
+  single-level, single-column partition; an index left out of every partition is not addressed.
+- **Non-empty orbit space.** `rank` and `unrank` require `num_orbits(dims, parts, signs) > 0`. An index of extent `0` (or an antisymmetric partition
+  with more columns than values) makes the count `0`, in which case the tensor has no entries and there is nothing to rank; guard on `num_orbits`
+  first.
 
 ## Getting started
 
@@ -103,7 +121,7 @@ assert(tpack::num_orbits(dims, partitions) == 15);  // C(5 + 2 - 1, 2) = C(6, 2)
 ```
 std::size_t rank(idx, dims, parts, signs = {});        // canonical indexing -> packed offset
 Indexing    unrank(rank, dims, parts, signs = {});     // packed offset -> canonical indexing
-void        unrank(idx, rank, dims, parts, signs = {});// write into a caller-provided buffer
+void        unrank(rank, idx, dims, parts, signs = {});// write into a caller-provided buffer
 ```
 
 `rank` maps a **canonical** indexing to its packed storage offset in `[0, num_orbits(dims, parts))`; `unrank` is the exact inverse and always returns
@@ -136,17 +154,18 @@ thread-local allocation in hot loops; those overloads are `constexpr`.
 ### `is_canonical` / `next_orbit_representative`
 
 ```
-bool is_canonical(idx, partitions, signs = {});
-bool next_orbit_representative(idx, parts, signs = {}, phase = nullptr);
+bool      is_canonical(idx, partitions, signs = {});
+OrbitStep next_orbit_representative(idx, parts, signs = {}, phase = 1);
 ```
 
 `is_canonical` reports whether an indexing is the chosen representative for its orbit TPack chose for storage — namely one whose columns are
 non-increasing in reverse-lexicographic order within every partition (strictly decreasing for antisymmetric partitions).
 
-`next_orbit_representative` walks the orbit: starting from any member, each call advances `idx` in place to the next member and returns `true`; the
-call that exhausts the orbit returns `false` and restores `idx` to the canonical representative. It is the tool for _scattering_ a packed value to all
-the dense positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use
-`canonicalize`.
+`next_orbit_representative` walks the orbit: starting from any member, each call advances `idx` in place to the next member and returns an `OrbitStep`
+that is `true` while further members remain; the call that exhausts the orbit returns an `OrbitStep` that is `false` and restores `idx` to the canonical
+representative. The returned `OrbitStep::phase` carries the antisymmetric sign of the advanced `idx` (feed it back in as the next call's `phase`; it is
+`+1` at the canonical representative and can be ignored for a purely symmetric orbit). It is the tool for _scattering_ a packed value to all the dense
+positions it represents (as in the getting-started example). To turn an arbitrary indexing into its canonical form directly, use `canonicalize`.
 
 <!-- tpack-snippet: name=usage_enumerate headers="iostream" -->
 ```cpp
@@ -172,7 +191,7 @@ The optional `signs` and `phase` arguments track the antisymmetric sign while en
 ### `orbit_size`
 
 ```
-std::size_t orbit_size(idx, partitions, indexing_canonical = false, signs = {});
+std::size_t orbit_size(idx, partitions, signs = {}, indexing_canonical = false);
 ```
 
 `orbit_size` returns how many indexings share the orbit of `idx` — i.e. how many dense positions a single packed value expands to, which is exactly the
@@ -219,26 +238,27 @@ assert((idx == std::vector<std::size_t>{2, 1, 0}));  // columns now non-increasi
 assert(tpack::rank(idx, dims, partitions) < tpack::num_orbits(dims, partitions));
 ```
 
-### `sort_partition_col_major` / `sort_partition_row_major`
+### `sort_partitions`
 
 ```
-void sort_partition_col_major(partitions, signs = {});
-void sort_partition_row_major(partitions, signs = {});
+template <IndexOrder Order = IndexOrder::ColumnMajor>
+void sort_partitions(partitions, signs = {});
 ```
 
-These sort the way a partition is expressed so that accessing the represented tensor (during read or write) happens in accordance with its storage
-order (as far as possible, that is). As a side-effect, they normalise a partition specification in place so that specifications describing the same
-symmetry become identical, which keeps the `rank`/`unrank` layout stable regardless of the order the caller happened to list indices, levels and
-partitions in. If a `signs` array is passed it is reordered in lockstep with the partitions, so each partition keeps its antisymmetry flag.
+This sorts the way a partition is expressed so that accessing the represented tensor (during read or write) happens in accordance with its storage
+order (as far as possible, that is). The `Order` template argument selects the storage order: `IndexOrder::ColumnMajor` (the default) or
+`IndexOrder::RowMajor`. As a side-effect, it normalises a partition specification in place so that specifications describing the same symmetry become
+identical, which keeps the `rank`/`unrank` layout stable regardless of the order the caller happened to list indices, levels and partitions in. If a
+`signs` array is passed it is reordered in lockstep with the partitions, so each partition keeps its antisymmetry flag.
 
-<!-- tpack-snippet: name=usage_sort_partition -->
+<!-- tpack-snippet: name=usage_sort_partitions -->
 ```cpp
 std::vector<std::vector<std::vector<std::size_t>>> a = {{{0, 1}}};
 std::vector<std::vector<std::vector<std::size_t>>> b = {{{1, 0}}};
 
 // Both describe the same symmetric pair; normalising makes them identical.
-tpack::sort_partition_col_major(a);
-tpack::sort_partition_col_major(b);
+tpack::sort_partitions(a);
+tpack::sort_partitions(b);
 assert(a == b);
 ```
 
@@ -249,8 +269,7 @@ permuting its columns multiplies the value by the sign (parity) of the permutati
 partition is a whole symmetric group acting on its columns, antisymmetry is a property of the partition as a whole.
 
 Antisymmetry is passed via the trailing `signs` argument that every function accepts: a range with one `tpack::Symmetry` per partition
-(`Symmetry::Antisymm` or `Symmetry::Symm`). A single `Symmetry` may be passed instead to apply it to every partition, and the enumerators convert
-implicitly from the integer sign of a permutation (`+1` = symmetric, `-1` = antisymmetric), so `{-1}` is accepted too. A range-valued `signs` must have
+(`Symmetry::Antisymm` or `Symmetry::Symm`). A single `Symmetry` may be passed instead to apply it to every partition. A range-valued `signs` must have
 exactly one entry per partition. Omitting the argument means all partitions are symmetric, so existing code is unaffected. Two things change for an
 antisymmetric partition:
 
@@ -258,7 +277,8 @@ antisymmetric partition:
   *strictly* decreasing column tuples, and `num_orbits`/`rank`/`unrank` count and address them *without repetition* (`C(d, k)` instead of
   `C(d + k - 1, k)`). `orbit_size` reports `0` for a vanishing indexing.
 - **Phase.** An arbitrary indexing equals `(-1)^p` times its canonical representative. `canonicalize` returns that phase — `+1`, `-1`, or `0` when the
-  element vanishes — and `next_orbit_representative` keeps a running `phase` (initialise it to `+1` at the canonical representative). `rank` itself
+  element vanishes — and `next_orbit_representative` threads a running `phase` through its argument and `OrbitStep::phase` result (start it at `+1` at
+  the canonical representative). `rank` itself
   needs no phase: canonicalise first, keep the returned sign, then rank the canonical indexing.
 
 <!-- tpack-snippet: name=usage_antisymmetric headers="iostream" -->
@@ -280,7 +300,7 @@ std::cout << "phase relating {1, 3} to its canonical form: " << phase << '\n';
 // Equal columns vanish.
 std::vector<std::size_t> diag = {2, 2};
 assert(tpack::canonicalize(diag, partitions, signs) == 0);
-assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, false, signs) == 0);
+assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, signs) == 0);
 ```
 
 ## Labeled (sector-graded) packing
@@ -295,7 +315,8 @@ assignment — and maps a canonical labelled indexing to and from a contiguous r
 what remains is the ordinary integer packing of the local indices, which it delegates to [`num_orbits`/`rank`/`unrank`](#the-public-functions).
 
 It is constructed from per-slot `label -> count` dimensions (any range of `{label, count}` pairs; labels absent from a slot simply do not occur
-there), the usual partitions and `signs`, and a `tpack::Constraint{combine, identity, target}` describing the group product.
+there), the usual partitions and `signs`, and a `tpack::Constraint{combine, identity, target}` describing the group product. For the common abelian
+point-group case, `tpack::xor_constraint(identity, target)` builds a `Constraint` whose `combine` is the bitwise XOR of the labels.
 
 <!-- tpack-snippet: name=usage_labeled mode=program -->
 ```cpp
@@ -320,9 +341,8 @@ int main() {
 	const std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
 
 	// Abelian selection rule: the XOR of the two labels must be 0 (the totally symmetric irrep).
-	const auto xor_combine = [](Label a, Label b) { return a ^ b; };
 	const tpack::SectorLayout<Label> layout(dims, partitions,
-											tpack::Constraint{xor_combine, /*identity=*/0, /*target=*/0});
+											tpack::xor_constraint(/*identity=*/0, /*target=*/0));
 
 	// Only the label-diagonal sectors (0, 0) and (1, 1) satisfy the rule; each is a symmetric pair over two
 	// locals, C(3, 2) = 3 entries, so the packed size is 6.

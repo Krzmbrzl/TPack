@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tpack/details/canonical.hpp>
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 #include <tpack/indexing.hpp>
 #include <tpack/labeled.hpp>
@@ -16,6 +17,7 @@
 #include <map>
 #include <numeric>
 #include <ranges>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -38,6 +40,29 @@ template< typename Label, typename Combine > struct Constraint {
 	Label identity;
 	Label target;
 };
+
+/**
+ * @brief Builds a Constraint whose group product is the bitwise XOR of the labels.
+ *
+ * This is the common case for abelian point groups, where irreps are XOR-combined bitmasks and the totally
+ * symmetric irrep is the all-zero mask. Works for an integral or an enumeration @c Label.
+ *
+ * @tparam Label The symmetry label type (integral or enum).
+ * @param identity The totally symmetric label, i.e. the fold's seed (usually all-zero).
+ * @param target The required combined label of the stored quantity.
+ * @return A Constraint using bitwise XOR as its @c combine.
+ */
+template< typename Label > constexpr auto xor_constraint(Label identity, Label target) {
+	constexpr auto combine = [](Label lhs, Label rhs) {
+		if constexpr (std::is_enum_v< Label >) {
+			using U = std::underlying_type_t< Label >;
+			return static_cast< Label >(static_cast< U >(lhs) ^ static_cast< U >(rhs));
+		} else {
+			return static_cast< Label >(lhs ^ rhs);
+		}
+	};
+	return Constraint{ combine, identity, target };
+}
 
 /**
  * @brief Sector-graded packed layout for a tensor whose indices carry symmetry labels.
@@ -85,9 +110,9 @@ public:
 	 *      single-column partition).
 	 */
 	template< std::ranges::range Dims, std::ranges::range Partitions, typename Combine,
-			  details::signs_spec Signs = details::all_symmetric_t >
+			  signs_spec Signs = all_symmetric_t >
 	SectorLayout(const Dims &dims, const Partitions &partitions, const Constraint< Label, Combine > &constraint,
-				 const Signs &signs = details::all_symmetric) {
+				 const Signs &signs = all_symmetric) {
 		using std::ranges::begin;
 		using std::ranges::end;
 
@@ -144,11 +169,11 @@ public:
 	 * first.
 	 *
 	 * @tparam Indexing A random-access range of @c Labeled<Label>.
-	 * @param idx The labelled indexing to test.
-	 * @return @c true if @p idx is sector-major canonical.
+	 * @param indexing The labelled indexing to test.
+	 * @return @c true if @p indexing is sector-major canonical.
 	 */
-	template< std::ranges::random_access_range Indexing > bool is_canonical(const Indexing &idx) const {
-		const auto it = std::ranges::begin(idx);
+	template< std::ranges::random_access_range Indexing > bool is_canonical(const Indexing &indexing) const {
+		const auto it = std::ranges::begin(indexing);
 		auto label_of = [&](std::size_t slot) -> const Label & {
 			return it[static_cast< std::ptrdiff_t >(slot)].label;
 		};
@@ -166,25 +191,25 @@ public:
 	 * @brief Computes the packed rank of a canonical labelled indexing.
 	 *
 	 * @tparam Indexing A random-access range of @c Labeled<Label>.
-	 * @param idx The canonical labelled indexing to rank.
+	 * @param indexing The canonical labelled indexing to rank.
 	 * @return The rank in @c [0, size()): the owning sector's offset plus the in-sector rank.
 	 *
-	 * @pre @p idx is canonical (see is_canonical) and its label tuple is an allowed sector.
+	 * @pre @p indexing is canonical (see is_canonical) and its label tuple is an allowed sector.
 	 */
-	template< std::ranges::random_access_range Indexing > std::size_t rank(const Indexing &idx) const {
+	template< std::ranges::random_access_range Indexing > std::size_t rank(const Indexing &indexing) const {
 		using std::ranges::size;
-		assert(size(idx) == m_num_slots);
-		assert(is_canonical(idx));
+		assert(size(indexing) == m_num_slots);
+		assert(is_canonical(indexing));
 
 		std::vector< Label > labels(m_num_slots);
 		std::vector< std::size_t > locals(m_num_slots);
-		std::ranges::transform(idx, labels.begin(), &Labeled< Label >::label);
-		std::ranges::transform(idx, locals.begin(), &Labeled< Label >::local);
+		std::ranges::transform(indexing, labels.begin(), &Labeled< Label >::label);
+		std::ranges::transform(indexing, locals.begin(), &Labeled< Label >::local);
 
 		const auto found = m_sector_index.find(labels);
 		assert(found != m_sector_index.end());
 		const std::size_t sector = found->second;
-		const Block &block       = m_blocks[sector];
+		const SectorBlock &block = m_blocks[sector];
 
 		return m_sectors[sector].offset + tpack::rank(locals, block.local_dims, block.run_parts, block.run_signs);
 	}
@@ -193,55 +218,56 @@ public:
 	 * @brief Reconstructs the canonical labelled indexing from a rank (the inverse of rank()).
 	 *
 	 * @tparam Indexing A random-access range of @c Labeled<Label>.
-	 * @param r The rank to decode; must lie in @c [0, size()).
-	 * @param idx [out] Overwritten with the reconstructed canonical labelled indexing.
+	 * @param rank The rank to decode; must lie in @c [0, size()).
+	 * @param indexing [out] Overwritten with the reconstructed canonical labelled indexing.
 	 *
-	 * @post is_canonical(idx, ...) holds.
+	 * @post is_canonical(indexing, ...) holds.
 	 */
-	template< std::ranges::random_access_range Indexing > void unrank(std::size_t r, Indexing &idx) const {
+	template< std::ranges::random_access_range Indexing > void unrank(std::size_t rank, Indexing &indexing) const {
 		using std::ranges::size;
-		assert(r < m_size);
-		assert(size(idx) == m_num_slots);
+		assert(rank < m_size);
+		assert(size(indexing) == m_num_slots);
 
-		const std::size_t sector = sector_of(r);
-		const Block &block       = m_blocks[sector];
+		const std::size_t sector = sector_of(rank);
+		const SectorBlock &block = m_blocks[sector];
 
 		std::vector< std::size_t > locals(m_num_slots, 0);
-		tpack::unrank(locals, r - m_sectors[sector].offset, block.local_dims, block.run_parts, block.run_signs);
+		tpack::unrank(rank - m_sectors[sector].offset, locals, block.local_dims, block.run_parts, block.run_signs);
 
-		std::ranges::transform(m_sectors[sector].labels, locals, std::ranges::begin(idx),
+		std::ranges::transform(m_sectors[sector].labels, locals, std::ranges::begin(indexing),
 							   [](const Label &label, std::size_t local) {
 								   return Labeled< Label >{ label, local };
 							   });
 
-		assert(is_canonical(idx));
+		assert(is_canonical(indexing));
 	}
 
 	/**
 	 * @brief Reconstructs and returns a freshly allocated canonical labelled indexing from a rank.
 	 *
 	 * @tparam Indexing The container to allocate and return (default @c std::vector<Labeled<Label>>).
-	 * @param r The rank to decode; must lie in @c [0, size()).
+	 * @param rank The rank to decode; must lie in @c [0, size()).
 	 * @return The reconstructed canonical labelled indexing, sized to the number of slots.
 	 */
 	template< std::ranges::random_access_range Indexing = std::vector< Labeled< Label > > >
-	Indexing unrank(std::size_t r) const {
-		Indexing idx;
-		idx.resize(m_num_slots);
-		unrank(r, idx);
-		return idx;
+	Indexing unrank(std::size_t rank) const {
+		Indexing indexing;
+		indexing.resize(m_num_slots);
+		unrank(rank, indexing);
+		return indexing;
 	}
 
 private:
-	/// The in-sector integer packing problem: local dimensions plus the label-run-split partitions and signs.
-	struct Block {
+	/// The in-sector integer packing problem for one Sector: local dimensions plus the label-run-split
+	/// partitions and signs. Paired with the public Sector record at the same index in m_sectors / m_blocks.
+	struct SectorBlock {
 		std::vector< std::size_t > local_dims;
 		std::vector< Partition > run_parts;
 		std::vector< Symmetry > run_signs;
 	};
 	struct LabeledSlotDim {
 		Label label;
-		std::size_t dim;
+		std::size_t count;
 
 		auto operator<=>(const LabeledSlotDim &) const = default;
 	};
@@ -252,7 +278,7 @@ private:
 	std::vector< Partition > m_partitions;
 	std::vector< Symmetry > m_part_signs;
 	std::vector< Sector > m_sectors;
-	std::vector< Block > m_blocks;
+	std::vector< SectorBlock > m_blocks;
 	std::map< std::vector< Label >, std::size_t > m_sector_index;
 
 
@@ -261,7 +287,7 @@ private:
 		const auto &entries = m_slot_dims[slot];
 		const auto it       = std::ranges::lower_bound(entries, label, {}, &LabeledSlotDim::label);
 		assert(it != entries.end() && it->label == label);
-		return it->dim;
+		return it->count;
 	}
 
 	/// Checks the per-level uniform-dimension precondition (intended for use inside @c assert).
@@ -277,12 +303,14 @@ private:
 	/// Whether columns @p lhs and @p rhs of @p part carry the same label on every level.
 	bool same_label_column(const Partition &part, const std::vector< Label > &labels, std::size_t lhs,
 						   std::size_t rhs) const {
-		return std::ranges::all_of(part, [&](const auto &level) { return labels[level[lhs]] == labels[level[rhs]]; });
+		return details::reverse_lex_compare(part, lhs, rhs,
+											[&labels](std::size_t slot) -> const Label & { return labels[slot]; })
+			   == 0;
 	}
 
 	/// Builds the in-sector integer problem for a fixed per-slot label assignment.
-	Block build_block(const std::vector< Label > &labels) const {
-		Block block;
+	SectorBlock build_block(const std::vector< Label > &labels) const {
+		SectorBlock block;
 		block.local_dims.resize(m_num_slots);
 		for (std::size_t slot = 0; slot < m_num_slots; ++slot) {
 			block.local_dims[slot] = count_at(slot, labels[slot]);
@@ -291,7 +319,7 @@ private:
 		std::size_t part_index = 0;
 		for (const auto &part : m_partitions) {
 			const Symmetry sign        = m_part_signs[part_index++];
-			const std::size_t num_cols = part.empty() ? 0 : part.front().size();
+			const std::size_t num_cols = details::num_columns(part);
 
 			// Equal-label columns are contiguous in a canonical sector, so split the partition into maximal runs
 			// of equal label; each run is an ordinary sub-partition packed over the local indices.
@@ -335,8 +363,8 @@ private:
 
 			Label product = std::accumulate(labels.begin(), labels.end(), constraint.identity, constraint.combine);
 
-			if (product == constraint.target && tpack::is_canonical(labels, m_partitions, details::all_symmetric)) {
-				Block block          = build_block(labels);
+			if (product == constraint.target && tpack::is_canonical(labels, m_partitions, all_symmetric)) {
+				SectorBlock block    = build_block(labels);
 				const std::size_t sz = num_orbits(block.local_dims, block.run_parts, block.run_signs);
 				if (sz > 0) {
 					m_sector_index.emplace(labels, m_sectors.size());

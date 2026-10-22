@@ -2,8 +2,10 @@
 
 #pragma once
 
+#include <tpack/details/apply_permutation.hpp>
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
 #include <algorithm>
@@ -11,7 +13,6 @@
 #include <cstddef>
 #include <iterator>
 #include <limits>
-#include <numeric>
 #include <ranges>
 #include <type_traits>
 #include <vector>
@@ -47,26 +48,18 @@ namespace tpack {
  * @see rank, unrank
  */
 template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
-								 const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
-	using std::ranges::end;
-	using std::ranges::size;
-
+		  signs_spec Signs = all_symmetric_t >
+constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	details::assert_signs_match(signs, partitions);
 
 	std::size_t num        = 1;
 	std::size_t part_index = 0;
 
 	for (auto &&part : partitions) {
-		// Effective (combined) dimension of the tuple of indices making up the current partition
-		const std::size_t effective_dim =
-			std::accumulate(begin(part), end(part), std::size_t(1),
-							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
-		const std::size_t part_size = size(*begin(part));
+		const std::size_t effective_dim = details::effective_dim(dims, part);
+		const std::size_t part_size     = details::num_columns(part);
 
-		num *= details::partition_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
+		num *= details::canonical_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
 		++part_index;
 	}
 
@@ -84,12 +77,12 @@ namespace details {
 	 * directly from the pivot/suffix structure of the permutation without materialising the full count. The
 	 * modular result is exactly what is needed to keep a running transposition counter correct.
 	 *
-	 * @tparam Columns The column-view type exposing @c num_cols() and indexed column comparison.
+	 * @tparam Columns The column-view type exposing @c num_columns() and indexed column comparison.
 	 * @param columns The columns about to be advanced; inspected but not modified.
 	 * @return The inversion-count delta (wrapping on @c std::size_t) of the next permutation step.
 	 */
 	template< typename Columns > constexpr std::size_t next_permutation_inversion_delta(Columns &columns) {
-		const std::size_t num_cols = columns.num_cols();
+		const std::size_t num_cols = columns.num_columns();
 		if (num_cols == 0) {
 			return 0;
 		}
@@ -124,63 +117,78 @@ namespace details {
 } // namespace details
 
 /**
+ * @brief The result of advancing an indexing with next_orbit_representative.
+ *
+ * Convertible to @c bool so it can drive a loop condition: @c true while the orbit has further
+ * representatives. @c phase carries the running antisymmetric sign of the (advanced) indexing; it is always
+ * valid, including on the final step that restores the canonical representative.
+ */
+struct OrbitStep {
+	/// The antisymmetric sign (@c +1 or @c -1) of the indexing after the step.
+	int phase;
+	/// Whether the indexing was advanced to a further representative (rather than reset to canonical).
+	bool has_more;
+
+	explicit constexpr operator bool() const { return has_more; }
+};
+
+/**
  * @brief Advances an indexing to the next representative of its symmetry orbit.
  *
  * Starting from any representative, repeated calls enumerate every member of the orbit exactly once and,
- * on the final call, restore @p idx to its canonical representative while returning @c false. Columns of the
- * last partition vary fastest; when a partition exhausts its permutations the enumeration carries over into
- * the next one, so the partitions behave like digits of a mixed-radix counter.
+ * on the final call, restore @p indexing to its canonical representative while reporting @c has_more == false.
+ * Columns of the last partition vary fastest; when a partition exhausts its permutations the enumeration
+ * carries over into the next one, so the partitions behave like digits of a mixed-radix counter.
  *
- * When a @p phase pointer is supplied, the running antisymmetric sign is maintained in @c *phase: on each
- * advance it is multiplied by the parity of the column permutation applied to the antisymmetric partitions,
- * so @c *phase always equals @c (-1) raised to the number of column transpositions (over all antisymmetric
- * partitions) separating @p idx from the canonical representative. The caller must initialise @c *phase to
- * that value before the first call; starting the enumeration at the canonical representative, that value is
- * @c +1. Symmetric partitions never contribute a sign.
+ * The running antisymmetric sign is threaded through @p phase: pass the sign of @p indexing relative to
+ * canonical (@c +1 when starting at the canonical representative), and the returned OrbitStep::phase is the
+ * sign of the advanced @p indexing, which the caller feeds into the next call. It equals @c (-1) raised to the
+ * number of column transpositions (over all antisymmetric partitions) separating @p indexing from canonical.
+ * Symmetric partitions never contribute a sign, so the phase can be ignored entirely for a purely symmetric
+ * orbit.
  *
  * @tparam Indexing A random-access range holding one index value per tensor index.
  * @tparam Partitions A range of partitions describing the symmetry.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param idx [in,out] The indexing to advance in place.
- * @param parts The symmetry partitions.
+ * @param indexing [in,out] The indexing to advance in place.
+ * @param partitions The symmetry partitions.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
  *        partitions symmetric.
- * @param phase [in,out] Optional pointer to the running antisymmetric sign (@c +1 or @c -1). When supplied it
- *        must be initialised to the sign of @p idx relative to canonical before the first call (@c +1 when
- *        starting from the canonical representative); it is updated in step with @p idx.
- * @return @c true if @p idx was advanced to a further representative, @c false once the orbit is exhausted
- *         (in which case @p idx has been reset to the canonical representative).
+ * @param phase The antisymmetric sign of @p indexing relative to canonical before the step (@c +1 at
+ *        canonical).
+ * @return An OrbitStep whose @c has_more is @c true if @p indexing was advanced to a further representative and
+ *         @c false once the orbit is exhausted (in which case @p indexing has been reset to the canonical
+ *         representative), and whose @c phase is the sign of the resulting @p indexing.
  *
- * @see is_canonical
+ * @see is_canonical, OrbitStep
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
-										 const Signs &signs = details::all_symmetric, int *phase = nullptr) {
-	details::assert_signs_match(signs, parts);
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+constexpr OrbitStep next_orbit_representative(Indexing &&indexing, Partitions &&partitions,
+											  const Signs &signs = all_symmetric, int phase = 1) {
+	details::assert_signs_match(signs, partitions);
 
-	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
+	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(partitions));
 
-	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
+	for (auto &&part_levels : std::ranges::views::reverse(partitions)) {
 		--part_index;
 		const bool antisym = details::antisymmetric_at(signs, part_index);
 
-		details::LevelColumnsIndexingView columns(part_levels, idx);
+		details::LevelColumnsIndexingView columns(part_levels, indexing);
 
-		if (phase && antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
-			*phase = -*phase;
+		if (antisym && details::next_permutation_inversion_delta(columns) % 2 != 0) {
+			phase = -phase;
 		}
 
 		auto [_, has_more] = std::ranges::next_permutation(columns, std::greater<>{});
 		if (has_more) {
-			return true;
+			return { phase, true };
 		}
 		// wrap around to next partition
 	}
 
 	// All candidates have been produced -> indexing is now transformed (back) to canonical representative
-	return false;
+	return { phase, false };
 }
 
 /**
@@ -194,42 +202,36 @@ constexpr bool next_orbit_representative(Indexing &&idx, Partitions &&parts,
  * @tparam Partitions A range of partitions describing the symmetry.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param idx The reference indexing
- * @param parts The symmetry partitions.
- * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
+ * @param indexing The reference indexing
+ * @param partitions The symmetry partitions.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
  *        partitions symmetric.
+ * @param indexing_canonical Whether @p indexing is already guaranteed to be in canonical form.
  * @return Number of elements in the respective orbit, or @c 0 if the element vanishes by antisymmetry.
  *
- * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
+ * @pre If @p indexing_canonical is @c true, @p indexing must actually be a canonical representative.
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false,
-								 const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
-	using std::ranges::size;
-
-	details::assert_signs_match(signs, parts);
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+constexpr std::size_t orbit_size(Indexing &&indexing, Partitions &&partitions, const Signs &signs = all_symmetric,
+								 bool indexing_canonical = false) {
+	details::assert_signs_match(signs, partitions);
 
 	std::size_t orb_size   = 1;
 	std::size_t part_index = 0;
 
-	for (auto &&part_levels : parts) {
+	for (auto &&part_levels : partitions) {
 		const bool antisym = details::antisymmetric_at(signs, part_index);
 		++part_index;
 
-		details::LevelColumnsIndexingView columns(part_levels, idx);
+		details::LevelColumnsIndexingView columns(part_levels, indexing);
 
-		const std::size_t num_cols = size(*begin(part_levels));
+		const std::size_t num_cols = details::num_columns(part_levels);
 
 		// A canonical representation keeps equal columns neighbouring; otherwise sort an index permutation so
-		// that equal columns become adjacent (idx itself is left untouched).
-		std::vector< std::size_t > order(num_cols);
-		std::iota(order.begin(), order.end(), std::size_t(0));
-		if (!indexing_canonical) {
-			std::ranges::sort(order, [&](std::size_t lhs, std::size_t rhs) { return columns[lhs] < columns[rhs]; });
-		}
+		// that equal columns become adjacent (indexing itself is left untouched).
+		auto by_column = [&](std::size_t lhs, std::size_t rhs) { return columns[lhs] < columns[rhs]; };
+		std::vector< std::size_t > order = indexing_canonical ? details::index_permutation(num_cols)
+															  : details::sorted_index_permutation(num_cols, by_column);
 
 		// Permuting equal columns yields the same indexing, so the orbit of this fully symmetric partition has
 		// num_cols! / prod(repeats_k!) members (a multinomial coefficient). Accumulating it as a product of

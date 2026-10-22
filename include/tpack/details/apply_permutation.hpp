@@ -2,12 +2,45 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <iterator>
+#include <numeric>
 #include <ranges>
 #include <utility>
+#include <vector>
 
 namespace tpack::details {
+
+/**
+ * @brief Builds the identity permutation @c [0, 1, ..., n-1].
+ *
+ * @param n The number of elements.
+ * @return A vector holding @c 0 up to @c n-1 in order.
+ */
+inline std::vector< std::size_t > index_permutation(std::size_t n) {
+	std::vector< std::size_t > order(n);
+	std::iota(order.begin(), order.end(), std::size_t(0));
+	return order;
+}
+
+/**
+ * @brief Builds the permutation that sorts @c [0, 1, ..., n-1] under a comparator.
+ *
+ * @tparam Comp A comparator over the projected indices.
+ * @tparam Proj A projection applied to each index before comparison.
+ * @param n The number of elements.
+ * @param comp The comparator deciding the order.
+ * @param proj The projection applied before comparison.
+ * @return A permutation @c order such that the sequence @c proj(order[i]) is sorted under @p comp.
+ */
+template< typename Comp, typename Proj = std::identity >
+std::vector< std::size_t > sorted_index_permutation(std::size_t n, Comp comp, Proj proj = {}) {
+	std::vector< std::size_t > order = index_permutation(n);
+	std::ranges::sort(order, std::move(comp), std::move(proj));
+	return order;
+}
 
 /**
  * @brief Applies a permutation to one or more ranges in lockstep.

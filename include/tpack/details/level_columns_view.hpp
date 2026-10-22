@@ -244,14 +244,14 @@ public:
 	constexpr LevelColumnsViewBase(Levels &levels, Proxy &&proxy)
 		: m_levels(levels), m_proxy(std::forward< Proxy >(proxy)) {}
 
-	constexpr std::size_t num_cols() const {
+	constexpr std::size_t num_columns() const {
 		using std::ranges::begin;
 		using std::ranges::size;
 		return size(*begin(m_levels));
 	}
 
 	constexpr iterator begin() { return { 0, this }; }
-	constexpr iterator end() { return { num_cols(), this }; }
+	constexpr iterator end() { return { num_columns(), this }; }
 
 	constexpr ColRef operator[](std::size_t col) { return { col, *this }; }
 

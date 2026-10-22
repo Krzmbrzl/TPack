@@ -2,11 +2,14 @@
 
 #pragma once
 
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <compare>
 #include <cstddef>
+#include <functional>
 #include <ranges>
 
 namespace tpack::details {
@@ -40,6 +43,21 @@ constexpr std::strong_ordering reverse_lex_compare(const Levels &part_levels, st
 }
 
 /**
+ * @brief Whether a merged effective index is a canonical single-partition sequence.
+ *
+ * A canonical sequence is non-increasing; an antisymmetric one must in addition be strictly decreasing, since
+ * equal columns make the element vanish. Intended for use inside @c assert.
+ *
+ * @param effective The effective (merged) index sequence of one partition.
+ * @param antisym Whether the partition is antisymmetric.
+ * @return @c true if @p effective is ordered canonically for the given symmetry.
+ */
+template< typename Range > constexpr bool is_canonical_sequence(Range &&effective, bool antisym) {
+	return std::ranges::is_sorted(effective, std::greater<>{})
+		   && (!antisym || std::ranges::adjacent_find(effective) == std::ranges::end(effective));
+}
+
+/**
  * @brief Tests whether the columns of every partition are non-increasing under a given column ordering.
  *
  * Columns that compare equal are only allowed in symmetric partitions. Each partition is checked
@@ -57,9 +75,8 @@ constexpr bool is_canonical_by(Partitions &&partitions, const Signs &signs, Comp
 
 	std::size_t part_index = 0;
 	for (auto &&part_levels : partitions) {
-		const bool antisym = antisymmetric_at(signs, part_index);
-		const std::size_t num_cols =
-			std::ranges::empty(part_levels) ? 0 : std::ranges::size(*std::ranges::begin(part_levels));
+		const bool antisym         = antisymmetric_at(signs, part_index);
+		const std::size_t num_cols = num_columns(part_levels);
 		++part_index;
 
 		for (std::size_t col = 1; col < num_cols; ++col) {

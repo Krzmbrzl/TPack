@@ -14,9 +14,11 @@ FetchContent_MakeAvailable(googlebenchmark)
 
 add_executable(tensor_packing_benchmarks
 	"combinatoric.cpp"
+	"indexing.cpp"
 	"main.cpp"
 	"orbit.cpp"
 	"rank.cpp"
+	"sector_layout.cpp"
 )
 set_target_properties(tensor_packing_benchmarks PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 

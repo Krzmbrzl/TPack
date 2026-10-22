@@ -224,11 +224,8 @@ TEST(TPack, SectorLayoutGenericEnumLabel) {
 	std::vector< std::map< Irrep, std::size_t > > dims{ { { Irrep::A, 2 }, { Irrep::B, 2 } },
 														{ { Irrep::A, 2 }, { Irrep::B, 2 } } };
 	const util::PartitionList parts{ { { 0, 1 } } };
-	const auto combine = [](Irrep lhs, Irrep rhs) {
-		return static_cast< Irrep >(static_cast< int >(lhs) ^ static_cast< int >(rhs));
-	};
 
-	const SectorLayout< Irrep > layout(dims, parts, Constraint{ combine, Irrep::A, Irrep::A }, symmetric_one);
+	const SectorLayout< Irrep > layout(dims, parts, xor_constraint(Irrep::A, Irrep::A), symmetric_one);
 
 	// Allowed canonical sectors (XOR == A): (A,A) and (B,B), each a symmetric pair of 2 locals -> C(3,2) = 3.
 	ASSERT_EQ(layout.size(), 6u);

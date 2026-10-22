@@ -50,7 +50,7 @@ TEST(TPack, LabeledCanonicalizeAndEnumerateSymmetric) {
 	EXPECT_EQ(idx, (Lidx{ { 1, 0 }, { 0, 5 } }));
 
 	const Lidx canonical = idx;
-	EXPECT_EQ(orbit_size(canonical, parts, true), 2u);
+	EXPECT_EQ(orbit_size(canonical, parts, all_symmetric, true), 2u);
 
 	std::size_t visited = 0;
 	do {
@@ -62,7 +62,7 @@ TEST(TPack, LabeledCanonicalizeAndEnumerateSymmetric) {
 	EXPECT_EQ(visited, 2u);
 
 	// Equal columns form a single-member orbit.
-	EXPECT_EQ(orbit_size(Lidx{ { 1, 2 }, { 1, 2 } }, parts, true), 1u);
+	EXPECT_EQ(orbit_size(Lidx{ { 1, 2 }, { 1, 2 } }, parts, all_symmetric, true), 1u);
 }
 
 TEST(TPack, LabeledAntisymmetric) {
@@ -73,7 +73,7 @@ TEST(TPack, LabeledAntisymmetric) {
 	// decreasing and a swap flips the phase.
 	EXPECT_TRUE(is_canonical(Lidx{ { 1, 3 }, { 1, 1 } }, parts, anti));
 	EXPECT_FALSE(is_canonical(Lidx{ { 1, 1 }, { 1, 3 } }, parts, anti));
-	EXPECT_EQ(orbit_size(Lidx{ { 1, 3 }, { 1, 1 } }, parts, true, anti), 2u);
+	EXPECT_EQ(orbit_size(Lidx{ { 1, 3 }, { 1, 1 } }, parts, anti, true), 2u);
 
 	Lidx swapped{ { 1, 1 }, { 1, 3 } };
 	EXPECT_EQ(canonicalize(swapped, parts, anti), -1);
@@ -86,7 +86,7 @@ TEST(TPack, LabeledAntisymmetric) {
 
 	// Equal (label, local) columns vanish.
 	EXPECT_FALSE(is_canonical(Lidx{ { 1, 2 }, { 1, 2 } }, parts, anti));
-	EXPECT_EQ(orbit_size(Lidx{ { 1, 2 }, { 1, 2 } }, parts, false, anti), 0u);
+	EXPECT_EQ(orbit_size(Lidx{ { 1, 2 }, { 1, 2 } }, parts, anti, false), 0u);
 	Lidx vanishing{ { 1, 2 }, { 1, 2 } };
 	EXPECT_EQ(canonicalize(vanishing, parts, anti), 0);
 }
