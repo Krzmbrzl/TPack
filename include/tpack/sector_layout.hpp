@@ -209,7 +209,7 @@ public:
 		const auto found = m_sector_index.find(labels);
 		assert(found != m_sector_index.end());
 		const std::size_t sector = found->second;
-		const Block &block       = m_blocks[sector];
+		const SectorBlock &block = m_blocks[sector];
 
 		return m_sectors[sector].offset + tpack::rank(locals, block.local_dims, block.run_parts, block.run_signs);
 	}
@@ -229,7 +229,7 @@ public:
 		assert(size(idx) == m_num_slots);
 
 		const std::size_t sector = sector_of(r);
-		const Block &block       = m_blocks[sector];
+		const SectorBlock &block = m_blocks[sector];
 
 		std::vector< std::size_t > locals(m_num_slots, 0);
 		tpack::unrank(r - m_sectors[sector].offset, locals, block.local_dims, block.run_parts, block.run_signs);
@@ -258,8 +258,9 @@ public:
 	}
 
 private:
-	/// The in-sector integer packing problem: local dimensions plus the label-run-split partitions and signs.
-	struct Block {
+	/// The in-sector integer packing problem for one Sector: local dimensions plus the label-run-split
+	/// partitions and signs. Paired with the public Sector record at the same index in m_sectors / m_blocks.
+	struct SectorBlock {
 		std::vector< std::size_t > local_dims;
 		std::vector< Partition > run_parts;
 		std::vector< Symmetry > run_signs;
@@ -277,7 +278,7 @@ private:
 	std::vector< Partition > m_partitions;
 	std::vector< Symmetry > m_part_signs;
 	std::vector< Sector > m_sectors;
-	std::vector< Block > m_blocks;
+	std::vector< SectorBlock > m_blocks;
 	std::map< std::vector< Label >, std::size_t > m_sector_index;
 
 
@@ -308,8 +309,8 @@ private:
 	}
 
 	/// Builds the in-sector integer problem for a fixed per-slot label assignment.
-	Block build_block(const std::vector< Label > &labels) const {
-		Block block;
+	SectorBlock build_block(const std::vector< Label > &labels) const {
+		SectorBlock block;
 		block.local_dims.resize(m_num_slots);
 		for (std::size_t slot = 0; slot < m_num_slots; ++slot) {
 			block.local_dims[slot] = count_at(slot, labels[slot]);
@@ -363,7 +364,7 @@ private:
 			Label product = std::accumulate(labels.begin(), labels.end(), constraint.identity, constraint.combine);
 
 			if (product == constraint.target && tpack::is_canonical(labels, m_partitions, all_symmetric)) {
-				Block block          = build_block(labels);
+				SectorBlock block    = build_block(labels);
 				const std::size_t sz = num_orbits(block.local_dims, block.run_parts, block.run_signs);
 				if (sz > 0) {
 					m_sector_index.emplace(labels, m_sectors.size());
