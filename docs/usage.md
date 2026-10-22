@@ -33,6 +33,20 @@ A level with more than one entry describes a *joint* symmetry: for `partitions =
 together, i.e. swapping index 0 with 1 forces index 2 to swap with 3 — the symmetry of a pair of index pairs such as a two-electron integral
 `(ab|cd)`.
 
+### Preconditions
+
+The descriptors must satisfy a few structural invariants. They are checked by assertions (active only when `NDEBUG` is not defined); in a release
+build, violating them is undefined behaviour rather than a diagnosed error.
+
+- **Rectangular partitions.** Every level of a partition lists the same number of indices — its columns. (A single-level partition is trivially
+  rectangular.)
+- **Uniform level dimension.** Every index within one level must share the same dimension, since the level collapses to a single effective dimension.
+- **Full coverage.** The partitions must reference every index of the tensor exactly once. An index that carries no symmetry is given its own
+  single-level, single-column partition; an index left out of every partition is not addressed.
+- **Non-empty orbit space.** `rank` and `unrank` require `num_orbits(dims, parts, signs) > 0`. An index of extent `0` (or an antisymmetric partition
+  with more columns than values) makes the count `0`, in which case the tensor has no entries and there is nothing to rank; guard on `num_orbits`
+  first.
+
 ## Getting started
 
 The following complete program fills a packed symmetric matrix, expands it to a dense one via `unrank` + `next_orbit_representative`, and checks the
