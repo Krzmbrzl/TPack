@@ -5,6 +5,7 @@
 #include <tpack/orbit.hpp>
 #include <tpack/rank.hpp>
 
+#include <array>
 #include <cstddef>
 #include <set>
 #include <tuple>
@@ -162,8 +163,8 @@ TEST(TPack, AntisymmetricRankRoundTrip) {
 
 TEST(TPack, AntisymmetricScratchBufferOverloads) {
 	// Exercise the explicit scratch-buffer overloads of rank/unrank alongside a sign array. The
-	// requires(!signs_spec<EffectiveIndexing>) constraint must keep the scratch buffer and the sign array
-	// unambiguous during overload resolution.
+	// details::index_scratch constraint must keep the scratch buffer and the sign array unambiguous during
+	// overload resolution.
 	const util::Dimensions dims{ 5, 5, 5 };
 	const util::PartitionList parts{ { { 0, 1, 2 } } };
 	const std::vector< Symmetry > signs{ Symmetry::Antisymm };
@@ -181,5 +182,26 @@ TEST(TPack, AntisymmetricScratchBufferOverloads) {
 		EXPECT_EQ(rank(idx, dims, parts, effective_idx, signs), r);
 	}
 }
+
+namespace {
+	// The scratch-buffer overloads are documented as usable in a constant-evaluated context; this exercises
+	// them (with std::array scratch, which has no .size() member) at compile time.
+	constexpr bool constexpr_roundtrip() {
+		std::array< std::size_t, 2 > dims{ 4, 4 };
+		std::array< std::array< std::array< std::size_t, 2 >, 1 >, 1 > parts{ { { { { { 0, 1 } } } } } };
+		std::array< std::size_t, 2 > scratch{};
+		std::array< std::size_t, 2 > idx{};
+
+		for (std::size_t r = 0; r < 10; ++r) { // C(4 + 2 - 1, 2) = 10
+			unrank(r, idx, dims, parts, scratch);
+			if (rank(idx, dims, parts, scratch) != r) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static_assert(constexpr_roundtrip(), "rank/unrank must round-trip in a constexpr context");
+} // namespace
 
 } // namespace tpack::tests
