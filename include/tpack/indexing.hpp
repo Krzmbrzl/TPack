@@ -107,8 +107,7 @@ constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Si
 			}
 
 			auto columns_equal = [&](std::size_t lhs, std::size_t rhs) {
-				return std::ranges::all_of(part_levels,
-										   [&](auto &&level) { return indexing[level[lhs]] == indexing[level[rhs]]; });
+				return details::reverse_lex_compare(part_levels, lhs, rhs, key) == 0;
 			};
 
 			// After sorting, equal columns are adjacent; any such pair makes the element vanish.

@@ -278,7 +278,9 @@ private:
 	/// Whether columns @p lhs and @p rhs of @p part carry the same label on every level.
 	bool same_label_column(const Partition &part, const std::vector< Label > &labels, std::size_t lhs,
 						   std::size_t rhs) const {
-		return std::ranges::all_of(part, [&](const auto &level) { return labels[level[lhs]] == labels[level[rhs]]; });
+		return details::reverse_lex_compare(part, lhs, rhs,
+											[&labels](std::size_t slot) -> const Label & { return labels[slot]; })
+			   == 0;
 	}
 
 	/// Builds the in-sector integer problem for a fixed per-slot label assignment.
