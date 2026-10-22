@@ -8,7 +8,7 @@ in namespace `tpack`; helpers under `tpack::details` are implementation details 
 | `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
-| `<tpack/partition.hpp>` | `sort_partition_col_major`, `sort_partition_row_major` |
+| `<tpack/partition.hpp>` | `sort_partition`, `IndexOrder` |
 
 ## Describing a symmetry
 
@@ -219,17 +219,18 @@ assert((idx == std::vector<std::size_t>{2, 1, 0}));  // columns now non-increasi
 assert(tpack::rank(idx, dims, partitions) < tpack::num_orbits(dims, partitions));
 ```
 
-### `sort_partition_col_major` / `sort_partition_row_major`
+### `sort_partition`
 
 ```
-void sort_partition_col_major(partitions, signs = {});
-void sort_partition_row_major(partitions, signs = {});
+template <IndexOrder Order = IndexOrder::ColumnMajor>
+void sort_partition(partitions, signs = {});
 ```
 
-These sort the way a partition is expressed so that accessing the represented tensor (during read or write) happens in accordance with its storage
-order (as far as possible, that is). As a side-effect, they normalise a partition specification in place so that specifications describing the same
-symmetry become identical, which keeps the `rank`/`unrank` layout stable regardless of the order the caller happened to list indices, levels and
-partitions in. If a `signs` array is passed it is reordered in lockstep with the partitions, so each partition keeps its antisymmetry flag.
+This sorts the way a partition is expressed so that accessing the represented tensor (during read or write) happens in accordance with its storage
+order (as far as possible, that is). The `Order` template argument selects the storage order: `IndexOrder::ColumnMajor` (the default) or
+`IndexOrder::RowMajor`. As a side-effect, it normalises a partition specification in place so that specifications describing the same symmetry become
+identical, which keeps the `rank`/`unrank` layout stable regardless of the order the caller happened to list indices, levels and partitions in. If a
+`signs` array is passed it is reordered in lockstep with the partitions, so each partition keeps its antisymmetry flag.
 
 <!-- tpack-snippet: name=usage_sort_partition -->
 ```cpp
@@ -237,8 +238,8 @@ std::vector<std::vector<std::vector<std::size_t>>> a = {{{0, 1}}};
 std::vector<std::vector<std::vector<std::size_t>>> b = {{{1, 0}}};
 
 // Both describe the same symmetric pair; normalising makes them identical.
-tpack::sort_partition_col_major(a);
-tpack::sort_partition_col_major(b);
+tpack::sort_partition(a);
+tpack::sort_partition(b);
 assert(a == b);
 ```
 

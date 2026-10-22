@@ -84,42 +84,32 @@ namespace details {
 } // namespace details
 
 /**
- * @brief Canonicalises a partition specification for a column-major index layout.
+ * @brief The index layout a partition specification is canonicalised for.
  *
- * Reorders indices, levels and partitions in place so that the smallest index of each group is treated as
- * extremal (sorted first). Specifications that differ only in the order of equivalent indices, levels or
- * partitions become identical, yielding a stable rank()/unrank() layout.
- *
- * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
- * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
- *         Symmetry flags, or the all_symmetric_t sentinel.
- * @param partitions [in,out] The partition specification to reorder in place.
- * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
- *
- * @see sort_partition_row_major
+ * Determines which index of each group is treated as extremal (sorted first): the smallest for a
+ * column-major layout, the largest for a row-major one.
  */
-template< std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
-void sort_partition_col_major(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
-	details::sort_partition< true >(partitions, signs);
-}
+enum class IndexOrder { ColumnMajor, RowMajor };
 
 /**
- * @brief Canonicalises a partition specification for a row-major index layout.
+ * @brief Canonicalises a partition specification for a given index layout.
  *
- * Like sort_partition_col_major but treats the largest index of each group as extremal (sorted first),
- * matching a row-major storage order.
+ * Reorders indices, levels and partitions in place so that the extremal index of each group (the smallest for
+ * @c IndexOrder::ColumnMajor, the largest for @c IndexOrder::RowMajor) is sorted first. Specifications that
+ * differ only in the order of equivalent indices, levels or partitions become identical, yielding a stable
+ * rank()/unrank() layout.
  *
+ * @tparam Order The index layout to canonicalise for; defaults to column-major.
  * @tparam Partitions A range of partitions, each a range of levels, each level a range of index positions.
  * @tparam Signs A single Symmetry (applied to every partition), a random-access range of per-partition
  *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param partitions [in,out] The partition specification to reorder in place.
  * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
- *
- * @see sort_partition_col_major
  */
-template< std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
-void sort_partition_row_major(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
-	details::sort_partition< false >(partitions, signs);
+template< IndexOrder Order          = IndexOrder::ColumnMajor, std::ranges::range Partitions,
+		  details::signs_spec Signs = details::all_symmetric_t >
+void sort_partition(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
+	details::sort_partition< Order == IndexOrder::ColumnMajor >(partitions, signs);
 }
 
 } // namespace tpack
