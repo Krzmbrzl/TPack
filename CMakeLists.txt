@@ -25,6 +25,7 @@ target_sources(tensor_packing
 		"include/tpack/partition.hpp"
 		"include/tpack/rank.hpp"
 		"include/tpack/sector_layout.hpp"
+		"include/tpack/tpack.hpp"
 )
 
 add_library(TPack::TPack ALIAS tensor_packing)

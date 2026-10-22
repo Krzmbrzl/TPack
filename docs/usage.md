@@ -1,14 +1,18 @@
 # Usage
 
 TPack is header-only: add `include/` to your include path (or link the `TPack::TPack` CMake target) and include the headers you need. Everything lives
-in namespace `tpack`; helpers under `tpack::details` are implementation details and not part of the public API.
+in namespace `tpack`; helpers under `tpack::details` are implementation details and not part of the public API. Include `<tpack/tpack.hpp>` to pull in
+the entire public API at once, or include the individual headers below.
 
 | Header | Public API |
 | --- | --- |
+| `<tpack/tpack.hpp>` | umbrella header including all of the below |
 | `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative`, `OrbitStep` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
 | `<tpack/partition.hpp>` | `sort_partition`, `IndexOrder` |
+| `<tpack/labeled.hpp>` | `Labeled` |
+| `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint` |
 
 ## Describing a symmetry
 
