@@ -126,10 +126,10 @@ namespace details {
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
+		  signs_spec Signs = all_symmetric_t >
 requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr std::size_t
 	rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
-		 const Signs &signs = details::all_symmetric) {
+		 const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -213,8 +213,8 @@ requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > cons
  * @see unrank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, details::signs_spec Signs = details::all_symmetric_t >
-std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
+		  std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 
 	return rank(idx, dims, parts, details::index_scratch_buffer(size(idx)), signs);
@@ -259,10 +259,10 @@ std::size_t rank(Indexing &&idx, Dimensions &&dims, Partitions &&parts, const Si
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, details::partitions_spec Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
+		  signs_spec Signs = all_symmetric_t >
 requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr void
 	unrank(std::size_t rank, Indexing &&idx, Dimensions &&dims, Partitions &&parts, EffectiveIndexing &&effective_idx,
-		   const Signs &signs = details::all_symmetric) {
+		   const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -403,9 +403,9 @@ requires details::index_scratch< std::remove_cvref_t< EffectiveIndexing > > cons
  * @see rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  details::partitions_spec Partitions, details::signs_spec Signs = details::all_symmetric_t >
+		  details::partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
 void unrank(std::size_t rank, Indexing &&idx, Dimensions &&dims, Partitions &&parts,
-			const Signs &signs = details::all_symmetric) {
+			const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 
 	unrank(rank, idx, dims, parts, details::index_scratch_buffer(size(dims)), signs);
@@ -434,8 +434,8 @@ void unrank(std::size_t rank, Indexing &&idx, Dimensions &&dims, Partitions &&pa
  */
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
 		  std::ranges::random_access_range Dimensions, details::partitions_spec Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts, const Signs &signs = details::all_symmetric) {
+		  signs_spec Signs = all_symmetric_t >
+Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&parts, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 
 	Indexing idx;

@@ -48,9 +48,8 @@ namespace tpack {
  * @see rank, unrank
  */
 template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
-								 const Signs &signs = details::all_symmetric) {
+		  signs_spec Signs = all_symmetric_t >
+constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	details::assert_signs_match(signs, partitions);
 
 	std::size_t num        = 1;
@@ -162,10 +161,9 @@ struct OrbitStep {
  *
  * @see is_canonical, OrbitStep
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts,
-											  const Signs &signs = details::all_symmetric, int phase = 1) {
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts, const Signs &signs = all_symmetric,
+											  int phase = 1) {
 	details::assert_signs_match(signs, parts);
 
 	std::size_t part_index = static_cast< std::size_t >(std::ranges::distance(parts));
@@ -211,10 +209,9 @@ constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts
  *
  * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
 constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false,
-								 const Signs &signs = details::all_symmetric) {
+								 const Signs &signs = all_symmetric) {
 	details::assert_signs_match(signs, parts);
 
 	std::size_t orb_size   = 1;

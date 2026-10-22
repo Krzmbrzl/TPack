@@ -36,10 +36,6 @@ struct Symmetry {
 	friend constexpr bool operator==(Symmetry, Symmetry) = default;
 };
 
-} // namespace tpack
-
-namespace tpack::details {
-
 /**
  * @brief Sentinel standing in for a per-partition sign array in which every partition is symmetric.
  *
@@ -64,6 +60,10 @@ concept signs_spec =
 	std::same_as<
 		std::remove_cvref_t< T >,
 		all_symmetric_t > || std::convertible_to< T, Symmetry > || (std::ranges::random_access_range< T > && std::same_as< std::ranges::range_value_t< T >, Symmetry >);
+
+} // namespace tpack
+
+namespace tpack::details {
 
 /**
  * @brief Queries whether partition @p index is antisymmetric.

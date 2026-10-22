@@ -86,9 +86,9 @@ public:
 	 *      single-column partition).
 	 */
 	template< std::ranges::range Dims, std::ranges::range Partitions, typename Combine,
-			  details::signs_spec Signs = details::all_symmetric_t >
+			  signs_spec Signs = all_symmetric_t >
 	SectorLayout(const Dims &dims, const Partitions &partitions, const Constraint< Label, Combine > &constraint,
-				 const Signs &signs = details::all_symmetric) {
+				 const Signs &signs = all_symmetric) {
 		using std::ranges::begin;
 		using std::ranges::end;
 
@@ -338,7 +338,7 @@ private:
 
 			Label product = std::accumulate(labels.begin(), labels.end(), constraint.identity, constraint.combine);
 
-			if (product == constraint.target && tpack::is_canonical(labels, m_partitions, details::all_symmetric)) {
+			if (product == constraint.target && tpack::is_canonical(labels, m_partitions, all_symmetric)) {
 				Block block          = build_block(labels);
 				const std::size_t sz = num_orbits(block.local_dims, block.run_parts, block.run_signs);
 				if (sz > 0) {

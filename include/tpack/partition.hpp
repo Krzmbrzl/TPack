@@ -106,9 +106,9 @@ enum class IndexOrder { ColumnMajor, RowMajor };
  * @param partitions [in,out] The partition specification to reorder in place.
  * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
  */
-template< IndexOrder Order          = IndexOrder::ColumnMajor, std::ranges::range Partitions,
-		  details::signs_spec Signs = details::all_symmetric_t >
-void sort_partition(Partitions &&partitions, Signs &&signs = details::all_symmetric_t{}) {
+template< IndexOrder Order = IndexOrder::ColumnMajor, std::ranges::range Partitions,
+		  signs_spec Signs = all_symmetric_t >
+void sort_partition(Partitions &&partitions, Signs &&signs = all_symmetric_t{}) {
 	details::sort_partition< Order == IndexOrder::ColumnMajor >(partitions, signs);
 }
 
