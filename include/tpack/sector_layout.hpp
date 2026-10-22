@@ -266,7 +266,7 @@ private:
 	};
 	struct LabeledSlotDim {
 		Label label;
-		std::size_t dim;
+		std::size_t count;
 
 		auto operator<=>(const LabeledSlotDim &) const = default;
 	};
@@ -286,7 +286,7 @@ private:
 		const auto &entries = m_slot_dims[slot];
 		const auto it       = std::ranges::lower_bound(entries, label, {}, &LabeledSlotDim::label);
 		assert(it != entries.end() && it->label == label);
-		return it->dim;
+		return it->count;
 	}
 
 	/// Checks the per-level uniform-dimension precondition (intended for use inside @c assert).
