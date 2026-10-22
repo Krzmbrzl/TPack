@@ -202,16 +202,16 @@ constexpr OrbitStep next_orbit_representative(Indexing &&idx, Partitions &&parts
  *         Symmetry flags, or the all_symmetric_t sentinel.
  * @param idx The reference indexing
  * @param parts The symmetry partitions.
- * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
  * @param signs A single Symmetry applied to every partition, or one Symmetry per partition; defaults to all
  *        partitions symmetric.
+ * @param indexing_canonical Whether @p idx is already guaranteed to be in canonical form.
  * @return Number of elements in the respective orbit, or @c 0 if the element vanishes by antisymmetry.
  *
  * @pre If @p indexing_canonical is @c true, @p idx must actually be a canonical representative.
  */
 template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
-constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false,
-								 const Signs &signs = all_symmetric) {
+constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, const Signs &signs = all_symmetric,
+								 bool indexing_canonical = false) {
 	details::assert_signs_match(signs, parts);
 
 	std::size_t orb_size   = 1;

@@ -173,7 +173,7 @@ The optional `signs` and `phase` arguments track the antisymmetric sign while en
 ### `orbit_size`
 
 ```
-std::size_t orbit_size(idx, partitions, indexing_canonical = false, signs = {});
+std::size_t orbit_size(idx, partitions, signs = {}, indexing_canonical = false);
 ```
 
 `orbit_size` returns how many indexings share the orbit of `idx` — i.e. how many dense positions a single packed value expands to, which is exactly the
@@ -283,7 +283,7 @@ std::cout << "phase relating {1, 3} to its canonical form: " << phase << '\n';
 // Equal columns vanish.
 std::vector<std::size_t> diag = {2, 2};
 assert(tpack::canonicalize(diag, partitions, signs) == 0);
-assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, false, signs) == 0);
+assert(tpack::orbit_size(std::vector<std::size_t>{2, 2}, partitions, signs) == 0);
 ```
 
 ## Labeled (sector-graded) packing

@@ -61,7 +61,7 @@ TEST_P(OrbitTest, next_orbit_representative) {
 	EXPECT_TRUE(is_canonical(indexing, info.partitions));
 
 	// The loop above restored the canonical representative, so orbit_size() may use its fast path.
-	const std::size_t orbit = orbit_size(indexing, info.partitions, true);
+	const std::size_t orbit = orbit_size(indexing, info.partitions, all_symmetric, true);
 	if (canonical) {
 		// Started from the canonical representative, enumeration visits the whole orbit.
 		EXPECT_EQ(num_representatives, orbit);
@@ -248,7 +248,7 @@ TEST_P(OrbitSizeTest, orbit_size) {
 
 	if (is_canon) {
 		ASSERT_TRUE(is_canonical(indexing, info.partitions));
-		EXPECT_EQ(orbit_size(indexing, info.partitions, true), expected);
+		EXPECT_EQ(orbit_size(indexing, info.partitions, all_symmetric, true), expected);
 	}
 }
 
@@ -296,7 +296,7 @@ TEST(TPack, OrbitSizeTest_no_intermediate_overflow) {
 	ASSERT_TRUE(is_canonical(indexing, info.partitions));
 
 	EXPECT_EQ(orbit_size(indexing, info.partitions), std::size_t(352716));
-	EXPECT_EQ(orbit_size(indexing, info.partitions, true), std::size_t(352716));
+	EXPECT_EQ(orbit_size(indexing, info.partitions, all_symmetric, true), std::size_t(352716));
 }
 
 TEST(TPack, AntisymmetricOrbitCount) {
@@ -342,8 +342,8 @@ TEST(TPack, AntisymmetricOrbitSize) {
 	const util::PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
-	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, false, anti), 2u); // distinct columns -> 2!
-	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, false, anti), 0u); // equal columns -> vanishes
+	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, anti, false), 2u); // distinct columns -> 2!
+	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 1, 1 }, parts, anti, false), 0u); // equal columns -> vanishes
 }
 
 TEST(TPack, NextOrbitPhaseMixedSymmetry) {
