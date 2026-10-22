@@ -10,7 +10,6 @@
 #include <cassert>
 #include <cstddef>
 #include <functional>
-#include <numeric>
 #include <ranges>
 #include <type_traits>
 #include <vector>
@@ -70,9 +69,8 @@ namespace details {
 			keys.push_back(part_key(part_levels));
 		}
 
-		std::vector< std::size_t > order(keys.size());
-		std::iota(order.begin(), order.end(), std::size_t(0));
-		std::ranges::sort(order, cmp_less{}, [&keys](std::size_t i) { return keys[i]; });
+		std::vector< std::size_t > order =
+			details::sorted_index_permutation(keys.size(), cmp_less{}, [&keys](std::size_t i) { return keys[i]; });
 
 		if constexpr (std::ranges::random_access_range< Signs >) {
 			assert(static_cast< std::size_t >(std::ranges::distance(signs)) == keys.size());

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/details/apply_permutation.hpp>
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
 #include <tpack/details/symmetry.hpp>
@@ -225,11 +226,9 @@ constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexi
 
 		// A canonical representation keeps equal columns neighbouring; otherwise sort an index permutation so
 		// that equal columns become adjacent (idx itself is left untouched).
-		std::vector< std::size_t > order(num_cols);
-		std::iota(order.begin(), order.end(), std::size_t(0));
-		if (!indexing_canonical) {
-			std::ranges::sort(order, [&](std::size_t lhs, std::size_t rhs) { return columns[lhs] < columns[rhs]; });
-		}
+		auto by_column = [&](std::size_t lhs, std::size_t rhs) { return columns[lhs] < columns[rhs]; };
+		std::vector< std::size_t > order = indexing_canonical ? details::index_permutation(num_cols)
+															  : details::sorted_index_permutation(num_cols, by_column);
 
 		// Permuting equal columns yields the same indexing, so the orbit of this fully symmetric partition has
 		// num_cols! / prod(repeats_k!) members (a multinomial coefficient). Accumulating it as a product of

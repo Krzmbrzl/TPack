@@ -9,7 +9,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <numeric>
 #include <ranges>
 #include <vector>
 
@@ -95,10 +94,7 @@ constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Si
 			return details::reverse_lex_compare(part_levels, lhs, rhs, key) > 0;
 		};
 
-		std::vector< std::size_t > order(num_cols, 0);
-		std::iota(order.begin(), order.end(), std::size_t(0));
-
-		std::ranges::sort(order, cmp);
+		std::vector< std::size_t > order = details::sorted_index_permutation(num_cols, cmp);
 
 		// Apply the determined order to the columns in place; the swap count gives the permutation's parity.
 		details::LevelColumnsIndexingView columns(part_levels, indexing);
