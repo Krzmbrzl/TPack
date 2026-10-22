@@ -5,6 +5,7 @@
 #include <tpack/details/apply_permutation.hpp>
 #include <tpack/details/canonical.hpp>
 #include <tpack/details/level_columns_view.hpp>
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
 #include <algorithm>
@@ -86,7 +87,7 @@ constexpr int canonicalize(Indexing &indexing, Partitions &&partitions, const Si
 
 	for (auto &&part_levels : partitions) {
 		const bool antisym         = details::antisymmetric_at(signs, part_index);
-		const std::size_t num_cols = size(*begin(part_levels));
+		const std::size_t num_cols = details::num_columns(part_levels);
 		++part_index;
 
 		auto key = [&](std::size_t slot) -> decltype(auto) { return indexing[slot]; };

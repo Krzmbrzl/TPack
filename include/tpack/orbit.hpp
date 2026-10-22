@@ -5,6 +5,7 @@
 #include <tpack/details/apply_permutation.hpp>
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
 #include <algorithm>
@@ -53,7 +54,6 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
 								 const Signs &signs = details::all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
-	using std::ranges::size;
 
 	details::assert_signs_match(signs, partitions);
 
@@ -65,7 +65,7 @@ constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
 		const std::size_t effective_dim =
 			std::accumulate(begin(part), end(part), std::size_t(1),
 							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
-		const std::size_t part_size = size(*begin(part));
+		const std::size_t part_size = details::num_columns(part);
 
 		num *= details::canonical_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
 		++part_index;
@@ -208,9 +208,6 @@ template< std::ranges::random_access_range Indexing, std::ranges::range Partitio
 		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexing_canonical = false,
 								 const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
-	using std::ranges::size;
-
 	details::assert_signs_match(signs, parts);
 
 	std::size_t orb_size   = 1;
@@ -222,7 +219,7 @@ constexpr std::size_t orbit_size(Indexing &&idx, Partitions &&parts, bool indexi
 
 		details::LevelColumnsIndexingView columns(part_levels, idx);
 
-		const std::size_t num_cols = size(*begin(part_levels));
+		const std::size_t num_cols = details::num_columns(part_levels);
 
 		// A canonical representation keeps equal columns neighbouring; otherwise sort an index permutation so
 		// that equal columns become adjacent (idx itself is left untouched).

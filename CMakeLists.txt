@@ -17,6 +17,7 @@ target_sources(tensor_packing
 		"include/tpack/details/canonical.hpp"
 		"include/tpack/details/factorial.hpp"
 		"include/tpack/details/level_columns_view.hpp"
+		"include/tpack/details/levels.hpp"
 		"include/tpack/details/symmetry.hpp"
 		"include/tpack/indexing.hpp"
 		"include/tpack/labeled.hpp"

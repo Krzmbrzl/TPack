@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
 #include <cassert>
@@ -57,9 +58,8 @@ constexpr bool is_canonical_by(Partitions &&partitions, const Signs &signs, Comp
 
 	std::size_t part_index = 0;
 	for (auto &&part_levels : partitions) {
-		const bool antisym = antisymmetric_at(signs, part_index);
-		const std::size_t num_cols =
-			std::ranges::empty(part_levels) ? 0 : std::ranges::size(*std::ranges::begin(part_levels));
+		const bool antisym         = antisymmetric_at(signs, part_index);
+		const std::size_t num_cols = num_columns(part_levels);
 		++part_index;
 
 		for (std::size_t col = 1; col < num_cols; ++col) {

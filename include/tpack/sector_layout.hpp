@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tpack/details/canonical.hpp>
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 #include <tpack/indexing.hpp>
 #include <tpack/labeled.hpp>
@@ -291,7 +292,7 @@ private:
 		std::size_t part_index = 0;
 		for (const auto &part : m_partitions) {
 			const Symmetry sign        = m_part_signs[part_index++];
-			const std::size_t num_cols = part.empty() ? 0 : part.front().size();
+			const std::size_t num_cols = details::num_columns(part);
 
 			// Equal-label columns are contiguous in a canonical sector, so split the partition into maximal runs
 			// of equal label; each run is an ordinary sub-partition packed over the local indices.

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tpack/details/binomial.hpp>
+#include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 #include <tpack/indexing.hpp>
 #include <tpack/orbit.hpp>
@@ -108,7 +109,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 		assert(details::levels_have_uniform_dimension(part_levels, dims));
 
 		// Convert into effective 1D partition (merge different partition levels)
-		const std::size_t effective_size = size(*begin(part_levels));
+		const std::size_t effective_size = details::num_columns(part_levels);
 		assert(effective_idx.size() >= effective_size);
 		std::ranges::fill(effective_idx, 0);
 
@@ -253,7 +254,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 		assert(details::levels_have_uniform_dimension(part_levels, dims));
 
 		std::size_t col_dim        = 1;
-		const std::size_t num_cols = size(*begin(part_levels));
+		const std::size_t num_cols = details::num_columns(part_levels);
 		for (auto &&level : part_levels) {
 			col_dim *= dims[*begin(level)];
 		}
@@ -266,7 +267,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 	for (auto &&part_levels : std::ranges::views::reverse(parts)) {
 		const bool antisym = details::antisymmetric_at(signs, --part_index);
 
-		const std::size_t num_cols = size(*begin(part_levels));
+		const std::size_t num_cols = details::num_columns(part_levels);
 		// The dimension of all columns must be equal so we will
 		// simply determine the dimension of the first column
 		std::size_t col_dim = 1;
@@ -292,7 +293,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 		rank -= current_rank * part_stride;
 
 		// Unrank current_rank into effective indexing
-		[[maybe_unused]] const std::size_t effective_size = size(*begin(part_levels));
+		[[maybe_unused]] const std::size_t effective_size = details::num_columns(part_levels);
 		assert(effective_idx.size() >= effective_size);
 		std::ranges::fill(effective_idx, 0);
 
