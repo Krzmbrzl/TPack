@@ -110,20 +110,16 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 		// Convert into effective 1D partition (merge different partition levels)
 		const std::size_t effective_size = details::num_columns(part_levels);
+		const std::size_t effective_dim  = details::effective_dim(dims, part_levels);
 		assert(effective_idx.size() >= effective_size);
 		std::ranges::fill(effective_idx, 0);
 
-		std::size_t effective_dim = 0;
 		for (std::size_t k = 0; k < effective_size; ++k) {
 			std::size_t col_stride = 1;
 			for (auto &&current : part_levels) {
 				effective_idx[k] += col_stride * idx[current[k]];
 				col_stride *= dims[current[k]];
 			}
-			// col_stride must be the same value in every iteration
-			// -> we just need its value as it describes the total dimension
-			// of the entries in our effective partition
-			effective_dim = col_stride;
 		}
 
 		// If effective_idx is not sorted, idx wasn't canonical; an antisymmetric partition must in addition be
@@ -253,11 +249,8 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 
 		assert(details::levels_have_uniform_dimension(part_levels, dims));
 
-		std::size_t col_dim        = 1;
 		const std::size_t num_cols = details::num_columns(part_levels);
-		for (auto &&level : part_levels) {
-			col_dim *= dims[*begin(level)];
-		}
+		const std::size_t col_dim  = details::effective_dim(dims, part_levels);
 
 		const std::size_t current_part_dim = details::canonical_count(col_dim, num_cols, antisym);
 		assert(std::numeric_limits< std::size_t >::max() / current_part_dim >= part_stride);
@@ -268,12 +261,7 @@ requires(!details::signs_spec< std::remove_cvref_t< EffectiveIndexing > >) const
 		const bool antisym = details::antisymmetric_at(signs, --part_index);
 
 		const std::size_t num_cols = details::num_columns(part_levels);
-		// The dimension of all columns must be equal so we will
-		// simply determine the dimension of the first column
-		std::size_t col_dim = 1;
-		for (auto &&level : part_levels) {
-			col_dim *= dims[*begin(level)];
-		}
+		const std::size_t col_dim  = details::effective_dim(dims, part_levels);
 
 		// Obtain the stride of the current partition by dividing part_stride
 		// by the dimension of the current partition

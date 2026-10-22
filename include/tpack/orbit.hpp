@@ -13,7 +13,6 @@
 #include <cstddef>
 #include <iterator>
 #include <limits>
-#include <numeric>
 #include <ranges>
 #include <type_traits>
 #include <vector>
@@ -52,20 +51,14 @@ template< std::ranges::random_access_range Dimensions, std::ranges::range Partit
 		  details::signs_spec Signs = details::all_symmetric_t >
 constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions,
 								 const Signs &signs = details::all_symmetric) {
-	using std::ranges::begin;
-	using std::ranges::end;
-
 	details::assert_signs_match(signs, partitions);
 
 	std::size_t num        = 1;
 	std::size_t part_index = 0;
 
 	for (auto &&part : partitions) {
-		// Effective (combined) dimension of the tuple of indices making up the current partition
-		const std::size_t effective_dim =
-			std::accumulate(begin(part), end(part), std::size_t(1),
-							[&dims](auto val, const auto &sub_part) { return val * dims[*begin(sub_part)]; });
-		const std::size_t part_size = details::num_columns(part);
+		const std::size_t effective_dim = details::effective_dim(dims, part);
+		const std::size_t part_size     = details::num_columns(part);
 
 		num *= details::canonical_count(effective_dim, part_size, details::antisymmetric_at(signs, part_index));
 		++part_index;
