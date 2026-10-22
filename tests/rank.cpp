@@ -8,6 +8,7 @@
 #include <array>
 #include <cstddef>
 #include <set>
+#include <span>
 #include <tuple>
 #include <vector>
 
@@ -208,6 +209,29 @@ TEST(TPack, ExplicitSignSpecForms) {
 		EXPECT_TRUE(is_canonical(idx, parts, all_anti));
 		EXPECT_EQ(rank(idx, dims, parts, all_anti), r);
 	}
+}
+
+TEST(TPack, AlternativeScratchAndIndexingContainers) {
+	const util::Dimensions dims{ 5, 5, 5 };
+	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const std::size_t n = num_orbits(dims, parts);
+
+	// A std::span over caller-owned storage satisfies the index_scratch concept, and a std::array works as the
+	// indexing at runtime (not just in the constexpr test above).
+	std::array< std::size_t, 3 > scratch_storage{};
+	const std::span< std::size_t > scratch(scratch_storage);
+
+	for (std::size_t r = 0; r < n; ++r) {
+		std::array< std::size_t, 3 > idx{};
+		unrank(r, idx, dims, parts, scratch);
+		EXPECT_TRUE(is_canonical(idx, parts));
+		EXPECT_EQ(rank(idx, dims, parts, scratch), r);
+	}
+
+	// An rvalue indexing (a temporary) binds to the forwarding-reference parameter of rank/is_canonical.
+	EXPECT_TRUE(is_canonical(std::vector< std::size_t >{ 4, 2, 1 }, parts));
+	EXPECT_EQ(rank(std::vector< std::size_t >{ 4, 2, 1 }, dims, parts),
+			  rank(std::array< std::size_t, 3 >{ 4, 2, 1 }, dims, parts));
 }
 
 namespace {
