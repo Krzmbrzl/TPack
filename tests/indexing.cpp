@@ -14,8 +14,8 @@
 
 namespace tpack::tests {
 
-struct IndexingTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, util::PartitionList, bool > > {
-	using param_tuple = std::tuple< std::vector< std::size_t >, util::PartitionList, bool >;
+struct IndexingTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, PartitionList<>, bool > > {
+	using param_tuple = std::tuple< std::vector< std::size_t >, PartitionList<>, bool >;
 };
 
 TEST_P(IndexingTest, is_canonical) {
@@ -77,7 +77,7 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format on
 
 TEST(TPack, AntisymmetricCanonicalizePhase) {
-	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const PartitionList parts{ { { 0, 1, 2 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	// Already canonical (strictly decreasing) -> phase +1
@@ -106,7 +106,7 @@ TEST(TPack, AntisymmetricCanonicalizePhase) {
 }
 
 TEST(TPack, CanonicalizeExplicitSignSpecs) {
-	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const PartitionList parts{ { { 0, 1, 2 } } };
 
 	// The explicit all_symmetric sentinel matches the omitted default (phase always +1).
 	std::vector< std::size_t > a{ 0, 2, 1 };
@@ -124,7 +124,7 @@ TEST(TPack, CanonicalizeExplicitSignSpecs) {
 }
 
 TEST(TPack, AntisymmetricIsCanonical) {
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	EXPECT_TRUE(is_canonical(std::vector< std::size_t >{ 2, 1 }, parts, anti));

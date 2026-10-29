@@ -74,7 +74,7 @@ namespace {
 	}
 
 	template< typename Combine >
-	void check_layout(const SlotDims &dims, const util::PartitionList &parts, const std::vector< Symmetry > &signs,
+	void check_layout(const SlotDims &dims, const PartitionList<> &parts, const std::vector< Symmetry > &signs,
 					  Combine combine, int identity, int target) {
 		const SectorLayout< int > layout(dims, parts, Constraint{ combine, identity, target }, signs);
 
@@ -144,14 +144,14 @@ namespace {
 TEST(TPack, SectorLayoutScalar) {
 	// No indices: a single sector of one entry iff the empty product (identity) hits the target.
 	check_layout({}, {}, {}, xor_combine, 0, 0);
-	const SectorLayout< int > empty_target(SlotDims{}, util::PartitionList{}, Constraint{ xor_combine, 0, 1 },
+	const SectorLayout< int > empty_target(SlotDims{}, PartitionList<>{}, Constraint{ xor_combine, 0, 1 },
 										   std::vector< Symmetry >{});
 	EXPECT_EQ(empty_target.size(), 0u);
 }
 
 TEST(TPack, SectorLayoutPairTwoLabels) {
 	const SlotDims dims{ uniform_slot(2, 2), uniform_slot(2, 2) };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	for (int target : { 0, 1 }) {
 		check_layout(dims, parts, symmetric_one, xor_combine, 0, target);
@@ -161,7 +161,7 @@ TEST(TPack, SectorLayoutPairTwoLabels) {
 
 TEST(TPack, SectorLayoutPairFourLabels) {
 	const SlotDims dims{ uniform_slot(4, 3), uniform_slot(4, 3) };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	for (int target : { 0, 1, 2, 3 }) {
 		check_layout(dims, parts, symmetric_one, xor_combine, 0, target);
@@ -171,7 +171,7 @@ TEST(TPack, SectorLayoutPairFourLabels) {
 
 TEST(TPack, SectorLayoutPairEightLabels) {
 	const SlotDims dims{ uniform_slot(8, 2), uniform_slot(8, 2) };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	check_layout(dims, parts, symmetric_one, xor_combine, 0, 0);
 	check_layout(dims, parts, antisymmetric_one, xor_combine, 0, 5);
@@ -181,7 +181,7 @@ TEST(TPack, SectorLayoutNonUniformLabelDims) {
 	// Different labels carry different numbers of local values.
 	std::map< int, std::size_t > slot{ { 0, 3 }, { 1, 1 }, { 2, 2 } };
 	const SlotDims dims{ slot, slot };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	check_layout(dims, parts, symmetric_one, xor_combine, 0, 0);
 	check_layout(dims, parts, antisymmetric_one, xor_combine, 0, 0);
@@ -192,7 +192,7 @@ TEST(TPack, SectorLayoutZeroSizedLabels) {
 	// Label 1 is listed but absent (count 0) at both slots; it must never appear in a sector.
 	std::map< int, std::size_t > slot{ { 0, 2 }, { 1, 0 }, { 2, 2 }, { 3, 0 } };
 	const SlotDims dims{ slot, slot };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	check_layout(dims, parts, symmetric_one, xor_combine, 0, 0);
 	check_layout(dims, parts, antisymmetric_one, xor_combine, 0, 2);
@@ -201,7 +201,7 @@ TEST(TPack, SectorLayoutZeroSizedLabels) {
 TEST(TPack, SectorLayoutMultiLevelPartition) {
 	// A single partition with two levels and two columns: columns (0,2) and (1,3).
 	const SlotDims dims{ uniform_slot(2, 2), uniform_slot(2, 2), uniform_slot(2, 2), uniform_slot(2, 2) };
-	const util::PartitionList parts{ { { 0, 1 }, { 2, 3 } } };
+	const PartitionList parts{ { { 0, 1 }, { 2, 3 } } };
 
 	check_layout(dims, parts, symmetric_one, xor_combine, 0, 0);
 	check_layout(dims, parts, antisymmetric_one, xor_combine, 0, 0);
@@ -210,7 +210,7 @@ TEST(TPack, SectorLayoutMultiLevelPartition) {
 
 TEST(TPack, SectorLayoutTwoIndependentPartitions) {
 	const SlotDims dims{ uniform_slot(4, 2), uniform_slot(4, 2), uniform_slot(4, 2), uniform_slot(4, 2) };
-	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+	const PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
 	const std::vector< Symmetry > signs{ Symmetry::Symm, Symmetry::Antisymm };
 
 	check_layout(dims, parts, signs, xor_combine, 0, 0);
@@ -223,7 +223,7 @@ TEST(TPack, SectorLayoutGenericEnumLabel) {
 
 	std::vector< std::map< Irrep, std::size_t > > dims{ { { Irrep::A, 2 }, { Irrep::B, 2 } },
 														{ { Irrep::A, 2 }, { Irrep::B, 2 } } };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	const SectorLayout< Irrep > layout(dims, parts, xor_constraint(Irrep::A, Irrep::A), symmetric_one);
 

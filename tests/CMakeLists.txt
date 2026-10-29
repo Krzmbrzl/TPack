@@ -21,6 +21,7 @@ add_executable(tensor_packing_tests
 	"labeled.cpp"
 	"orbit.cpp"
 	"partition.cpp"
+	"partition_types.cpp"
 	"rank.cpp"
 	"sector_layout.cpp"
 )

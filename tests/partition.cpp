@@ -17,7 +17,7 @@
 namespace tpack::tests {
 
 TEST(TPack, PartitionTest_consistency) {
-	const util::PartitionList partitions  = { { { 0, 1 } }, { { 2, 3 }, { 4, 5 } }, { { 6 } } };
+	const PartitionList partitions  = { { { 0, 1 } }, { { 2, 3 }, { 4, 5 } }, { { 6 } } };
 	const std::vector< std::size_t > dims = { 3, 3, 2, 2, 4, 4, 5 };
 	std::size_t total_dim = std::accumulate(dims.begin(), dims.end(), std::size_t(1), std::multiplies<>{});
 
@@ -87,8 +87,8 @@ TEST(TPack, PartitionTest_consistency) {
 	EXPECT_EQ(ref_sum, row_sum);
 }
 
-struct PartitionTest : testing::TestWithParam< std::tuple< util::PartitionList, util::PartitionList, bool > > {
-	using param_tuple = std::tuple< util::PartitionList, util::PartitionList, bool >;
+struct PartitionTest : testing::TestWithParam< std::tuple< PartitionList<>, PartitionList<>, bool > > {
+	using param_tuple = std::tuple< PartitionList<>, PartitionList<>, bool >;
 };
 
 
@@ -128,21 +128,21 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format on
 
 TEST(TPack, SortPartitionReordersSignsInLockstep) {
-	util::PartitionList parts{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
+	PartitionList parts{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
 	std::vector< Symmetry > signs{ Symmetry::Antisymm, Symmetry::Symm, Symmetry::Antisymm };
 
 	sort_partitions(parts, signs);
 
 	// Ordered by smallest index; single-level columns sorted descending within each level
-	EXPECT_EQ(parts, (util::PartitionList{ { { 1, 0 } }, { { 3, 2 } }, { { 5, 4 } } }));
+	EXPECT_EQ(parts, (PartitionList<>{ { { 1, 0 } }, { { 3, 2 } }, { { 5, 4 } } }));
 	EXPECT_EQ(signs, (std::vector< Symmetry >{ Symmetry::Symm, Symmetry::Antisymm, Symmetry::Antisymm }));
 
-	util::PartitionList parts_row{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
+	PartitionList parts_row{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
 	std::vector< Symmetry > signs_row{ Symmetry::Antisymm, Symmetry::Symm, Symmetry::Antisymm };
 
 	sort_partitions< tpack::IndexOrder::RowMajor >(parts_row, signs_row);
 
-	EXPECT_EQ(parts_row, (util::PartitionList{ { { 4, 5 } }, { { 2, 3 } }, { { 0, 1 } } }));
+	EXPECT_EQ(parts_row, (PartitionList<>{ { { 4, 5 } }, { { 2, 3 } }, { { 0, 1 } } }));
 	EXPECT_EQ(signs_row, (std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Antisymm, Symmetry::Symm }));
 }
 

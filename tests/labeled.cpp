@@ -28,7 +28,7 @@ TEST(TPack, LabeledOrdering) {
 }
 
 TEST(TPack, LabeledIsCanonicalSymmetric) {
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	// Columns must be non-increasing (reverse-lexicographically) for a symmetric partition.
 	EXPECT_TRUE(is_canonical(Lidx{ { 1, 0 }, { 0, 5 } }, parts));
@@ -41,7 +41,7 @@ TEST(TPack, LabeledIsCanonicalSymmetric) {
 }
 
 TEST(TPack, LabeledCanonicalizeAndEnumerateSymmetric) {
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	// Canonicalising any orbit member yields the same (non-increasing) representative, and enumerating the
 	// orbit visits exactly its orbit_size members.
@@ -66,7 +66,7 @@ TEST(TPack, LabeledCanonicalizeAndEnumerateSymmetric) {
 }
 
 TEST(TPack, LabeledAntisymmetric) {
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	// Equal labels with distinct locals are allowed and do NOT vanish; the canonical form is strictly
@@ -95,7 +95,7 @@ TEST(TPack, LabeledAntisymmetric) {
 enum class Irrep { A, B, C, D };
 
 TEST(TPack, LabeledGenericLabelType) {
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 	using LidxE = std::vector< Labeled< Irrep > >;
 
 	EXPECT_TRUE(is_canonical(LidxE{ { Irrep::C, 0 }, { Irrep::A, 7 } }, parts));

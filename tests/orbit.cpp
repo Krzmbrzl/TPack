@@ -119,7 +119,7 @@ struct OrbitTranspositionTest : testing::TestWithParam< std::tuple< std::vector<
 
 // Number of column pairs of the given partition that are in ascending order, i.e. the number of
 // transpositions (of adjacent columns) that separate the current state from the canonical one.
-std::size_t num_inversions(const std::vector< std::size_t > &indexing, const util::Partition &partition) {
+std::size_t num_inversions(const std::vector< std::size_t > &indexing, const Partition<> &partition) {
 	auto column = [&](std::size_t col) {
 		std::vector< std::size_t > values;
 		// Reverse lexicographic comparison -> last level is the most significant one
@@ -288,7 +288,7 @@ TEST(TPack, OrbitSizeTest_no_intermediate_overflow) {
 
 	std::vector< std::size_t > level(num_cols);
 	std::iota(level.begin(), level.end(), std::size_t(0));
-	const util::TensorInfo info = util::make_info_l(std::vector< std::size_t >(num_cols, 2), level);
+	const util::TensorInfo info = util::make_info_l(std::vector< std::size_t >(num_cols, 2), Level<>(level));
 
 	// Canonical (non-increasing) representative: eleven 1s followed by ten 0s.
 	std::vector< std::size_t > indexing(num_cols, 0);
@@ -301,13 +301,13 @@ TEST(TPack, OrbitSizeTest_no_intermediate_overflow) {
 
 TEST(TPack, AntisymmetricOrbitCount) {
 	const util::Dimensions dims{ 4, 4 };
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 
 	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Antisymm }), 6u); // C(4, 2)
 	EXPECT_EQ(num_orbits(dims, parts, std::vector< Symmetry >{ Symmetry::Symm }), 10u);    // C(5, 2)
 
 	// Fewer distinct values than columns -> no antisymmetric representatives exist
-	EXPECT_EQ(num_orbits(util::Dimensions{ 2, 2, 2 }, util::PartitionList{ { { 0, 1, 2 } } },
+	EXPECT_EQ(num_orbits(util::Dimensions{ 2, 2, 2 }, PartitionList<>{ { { 0, 1, 2 } } },
 						 std::vector< Symmetry >{ Symmetry::Antisymm }),
 			  0u);
 }
@@ -315,21 +315,21 @@ TEST(TPack, AntisymmetricOrbitCount) {
 TEST(TPack, OrbitCountDegenerate) {
 	// An index of extent 0 contributes no values, so the tensor has no entries. The symmetric case must not
 	// trip the binomial precondition; it simply reports an empty orbit space.
-	EXPECT_EQ(num_orbits(util::Dimensions{ 0 }, util::PartitionList{ { { 0 } } }), 0u);
-	EXPECT_EQ(num_orbits(util::Dimensions{ 3, 0 }, util::PartitionList{ { { 0 } }, { { 1 } } }), 0u);
-	EXPECT_EQ(num_orbits(util::Dimensions{ 0, 0 }, util::PartitionList{ { { 0, 1 } } },
+	EXPECT_EQ(num_orbits(util::Dimensions{ 0 }, PartitionList<>{ { { 0 } } }), 0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 3, 0 }, PartitionList<>{ { { 0 } }, { { 1 } } }), 0u);
+	EXPECT_EQ(num_orbits(util::Dimensions{ 0, 0 }, PartitionList<>{ { { 0, 1 } } },
 						 std::vector< Symmetry >{ Symmetry::Antisymm }),
 			  0u);
 
 	// A partition with no levels (hence no columns) addresses nothing and contributes a factor of 1, leaving
 	// the surrounding orbit count unchanged.
-	EXPECT_EQ(num_orbits(util::Dimensions{ 3 }, util::PartitionList{ { { 0 } }, util::Partition{} }),
-			  num_orbits(util::Dimensions{ 3 }, util::PartitionList{ { { 0 } } }));
+	EXPECT_EQ(num_orbits(util::Dimensions{ 3 }, PartitionList<>{ { { 0 } }, Partition<>{} }),
+			  num_orbits(util::Dimensions{ 3 }, PartitionList<>{ { { 0 } } }));
 }
 
 TEST(TPack, SignSpecScalarForm) {
 	const util::Dimensions dims{ 4, 4, 3, 3 };
-	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+	const PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
 
 	// A single Symmetry applies to every partition, matching an all-antisymmetric range.
 	EXPECT_EQ(num_orbits(dims, parts, Symmetry::Antisymm),
@@ -347,7 +347,7 @@ TEST(TPack, SymmetryStaticCastToInt) {
 }
 
 TEST(TPack, AntisymmetricOrbitSize) {
-	const util::PartitionList parts{ { { 0, 1 } } };
+	const PartitionList parts{ { { 0, 1 } } };
 	const std::vector< Symmetry > anti{ Symmetry::Antisymm };
 
 	EXPECT_EQ(orbit_size(std::vector< std::size_t >{ 2, 1 }, parts, anti, false), 2u); // distinct columns -> 2!
@@ -355,9 +355,9 @@ TEST(TPack, AntisymmetricOrbitSize) {
 }
 
 TEST(TPack, NextOrbitPhaseMixedSymmetry) {
-	// Partition 0 is symmetric, partition 1 antisymmetric. The tracked phase must reflect only the
+	// Partition<> 0 is symmetric, partition 1 antisymmetric. The tracked phase must reflect only the
 	// antisymmetric partition's column inversions; permuting the symmetric partition contributes no sign.
-	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+	const PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
 	const std::vector< Symmetry > signs{ Symmetry::Symm, Symmetry::Antisymm };
 
 	std::vector< std::size_t > indexing{ 3, 1, 2, 0 }; // canonical for both partitions

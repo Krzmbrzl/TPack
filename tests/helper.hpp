@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include <vector>
+#include <tpack/partition_types.hpp>
+
 #include <iostream>
+#include <vector>
 
 namespace tpack::util {
 
 using Dimensions = std::vector< std::size_t >;
 
-using PartitionLevel = std::vector< std::size_t >;
-using Partition      = std::vector< PartitionLevel >;
-using PartitionList  = std::vector< Partition >;
-
 struct TensorInfo {
 	Dimensions dims;
-	PartitionList partitions;
+	PartitionList<> partitions;
 };
 
 inline std::ostream &operator<<(std::ostream &stream, const TensorInfo &info) {
@@ -53,16 +51,16 @@ inline std::ostream &operator<<(std::ostream &stream, const TensorInfo &info) {
 	return stream;
 }
 
-inline TensorInfo make_info(std::vector< std::size_t > dims, PartitionList parts) {
+inline TensorInfo make_info(std::vector< std::size_t > dims, PartitionList<> parts) {
 	return { .dims = std::move(dims), .partitions = std::move(parts) };
 }
 
-inline TensorInfo make_info_p(std::vector< std::size_t > dims, Partition part) {
-	return { .dims = std::move(dims), .partitions = PartitionList{ { std::move(part) } } };
+inline TensorInfo make_info_p(std::vector< std::size_t > dims, Partition<> part) {
+	return { .dims = std::move(dims), .partitions = PartitionList<>{ { std::move(part) } } };
 }
 
-inline TensorInfo make_info_l(std::vector< std::size_t > dims, PartitionLevel level) {
-	return { .dims = std::move(dims), .partitions = PartitionList{ Partition{ std::move(level) } } };
+inline TensorInfo make_info_l(std::vector< std::size_t > dims, Level<> level) {
+	return { .dims = std::move(dims), .partitions = PartitionList<>{ Partition<>{ std::move(level) } } };
 }
 
 } // namespace tpack::util
