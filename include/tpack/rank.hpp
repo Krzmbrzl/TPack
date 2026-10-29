@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/concepts.hpp>
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/canonical.hpp>
 #include <tpack/details/levels.hpp>
@@ -35,7 +36,7 @@ namespace details {
 	 * @param dims The dimension of every index.
 	 * @return @c true if, within each level, all indices share the same dimension.
 	 */
-	template< std::ranges::range PartLevels, std::ranges::random_access_range Dimensions >
+	template< std::ranges::range PartLevels, dimensions Dimensions >
 	constexpr bool levels_have_uniform_dimension(const PartLevels &part_levels, const Dimensions &dims) {
 		using std::ranges::begin;
 
@@ -67,28 +68,6 @@ namespace details {
 	}
 
 } // namespace details
-
-/**
- * @brief A caller-provided scratch buffer for the collapsed effective index: a random-access range of
- *        std::size_t.
- *
- * Constraining the scratch parameter positively (rather than as "not a signs spec") keeps the scratch-taking
- * rank()/unrank() overloads unambiguous against the ones taking only a sign argument, without depending on
- * what a sign spec happens not to be.
- */
-template< typename T >
-concept index_scratch =
-	std::ranges::random_access_range< T > &&std::same_as< std::ranges::range_value_t< T >, std::size_t >;
-
-/**
- * @brief A partition specification: a range of partitions, each itself a range of levels.
- *
- * The shape every entry point accepts for its partitions argument. Constraining on it also keeps the in-place
- * unrank() overloads unambiguous against the return-by-value one: with the rank passed first, a sign range
- * (a range of Symmetry) can never be mistaken for the partitions.
- */
-template< typename T >
-concept partitions_spec = std::ranges::range< T > &&std::ranges::range< std::ranges::range_value_t< T > >;
 
 /**
  * @brief Computes the packed rank (storage offset) of a canonical indexing.
@@ -124,12 +103,10 @@ concept partitions_spec = std::ranges::range< T > &&std::ranges::range< std::ran
  * @pre Within every level of a partition, all indices share the same dimension.
  * @see unrank, num_orbits, is_canonical
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  signs_spec Signs = all_symmetric_t >
-requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr std::size_t
-	rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions, EffectiveIndexing &&effective_idx,
-		 const Signs &signs = all_symmetric) {
+template< integral_indexing Indexing, index_scratch EffectiveIndexing, dimensions Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
+constexpr std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
+						   EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -212,8 +189,8 @@ requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr std
  * @pre @p indexing is canonical (see is_canonical) and @c size(indexing) == size(dims).
  * @see unrank, num_orbits
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+template< integral_indexing Indexing, dimensions Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
 std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 
@@ -257,11 +234,10 @@ std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions
  * @post is_canonical(indexing, partitions, signs) holds.
  * @see rank, num_orbits
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
-requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr void
-	unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
-		   EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
+template< writable_integral_indexing Indexing, index_scratch EffectiveIndexing, dimensions Dimensions,
+		  partition_list Partitions, partition_signs Signs = all_symmetric_t >
+constexpr void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
+					  EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -401,8 +377,8 @@ requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr voi
  * @post is_canonical(indexing, partitions, signs) holds.
  * @see rank
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
+template< writable_integral_indexing Indexing, dimensions Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
 void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
 			const Signs &signs = all_symmetric) {
 	using std::ranges::size;
@@ -431,8 +407,8 @@ void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions
  * @post is_canonical(return value, partitions, signs) holds.
  * @see rank
  */
-template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
-		  std::ranges::random_access_range Dimensions, partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
+template< writable_integral_indexing Indexing = std::vector< std::size_t >, dimensions Dimensions,
+		  partition_list Partitions, partition_signs Signs = all_symmetric_t >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 

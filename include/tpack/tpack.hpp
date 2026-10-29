@@ -10,9 +10,11 @@
  * instead include the individual headers (e.g. @c <tpack/rank.hpp>).
  */
 
+#include <tpack/concepts.hpp>
 #include <tpack/indexing.hpp>
 #include <tpack/labeled.hpp>
 #include <tpack/orbit.hpp>
 #include <tpack/partition.hpp>
 #include <tpack/rank.hpp>
 #include <tpack/sector_layout.hpp>
+#include <tpack/symmetry.hpp>
