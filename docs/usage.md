@@ -182,7 +182,9 @@ const std::vector<std::size_t> &walker.indexing();
 
 `RankWalker` visits the same indexings as calling `unrank` for `0, 1, 2, ...`, but keeps the current indexing as state and only updates the
 trailing columns that change from one rank to the next. This avoids the greedy binomial search that `unrank` has to repeat for every rank, which
-makes it the better choice when running through an entire index space.
+makes it the recommended choice over consecutive `unrank` calls whenever you sweep an entire index space. In the `BM_unrank_sweep` and
+`BM_rank_walker_sweep` benchmarks (Release build, dimension 4) it was roughly 14x faster for a single one-column partition and 28-32x faster for
+two partitions with two levels and two or three columns each. Use `unrank` for random access to individual ranks.
 
 <!-- tpack-snippet: name=usage_rank_walker -->
 ```cpp
