@@ -14,8 +14,8 @@
 
 namespace tpack::tests {
 
-struct IndexingTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, PartitionList, bool > > {
-	using param_tuple = std::tuple< std::vector< std::size_t >, PartitionList, bool >;
+struct IndexingTest : testing::TestWithParam< std::tuple< std::vector< std::size_t >, PartitionList<>, bool > > {
+	using param_tuple = std::tuple< std::vector< std::size_t >, PartitionList<>, bool >;
 };
 
 TEST_P(IndexingTest, is_canonical) {

@@ -87,8 +87,8 @@ TEST(TPack, PartitionTest_consistency) {
 	EXPECT_EQ(ref_sum, row_sum);
 }
 
-struct PartitionTest : testing::TestWithParam< std::tuple< PartitionList, PartitionList, bool > > {
-	using param_tuple = std::tuple< PartitionList, PartitionList, bool >;
+struct PartitionTest : testing::TestWithParam< std::tuple< PartitionList<>, PartitionList<>, bool > > {
+	using param_tuple = std::tuple< PartitionList<>, PartitionList<>, bool >;
 };
 
 
@@ -134,7 +134,7 @@ TEST(TPack, SortPartitionReordersSignsInLockstep) {
 	sort_partitions(parts, signs);
 
 	// Ordered by smallest index; single-level columns sorted descending within each level
-	EXPECT_EQ(parts, (PartitionList{ { { 1, 0 } }, { { 3, 2 } }, { { 5, 4 } } }));
+	EXPECT_EQ(parts, (PartitionList<>{ { { 1, 0 } }, { { 3, 2 } }, { { 5, 4 } } }));
 	EXPECT_EQ(signs, (std::vector< Symmetry >{ Symmetry::Symm, Symmetry::Antisymm, Symmetry::Antisymm }));
 
 	PartitionList parts_row{ { { 4, 5 } }, { { 0, 1 } }, { { 2, 3 } } };
@@ -142,7 +142,7 @@ TEST(TPack, SortPartitionReordersSignsInLockstep) {
 
 	sort_partitions< tpack::IndexOrder::RowMajor >(parts_row, signs_row);
 
-	EXPECT_EQ(parts_row, (PartitionList{ { { 4, 5 } }, { { 2, 3 } }, { { 0, 1 } } }));
+	EXPECT_EQ(parts_row, (PartitionList<>{ { { 4, 5 } }, { { 2, 3 } }, { { 0, 1 } } }));
 	EXPECT_EQ(signs_row, (std::vector< Symmetry >{ Symmetry::Antisymm, Symmetry::Antisymm, Symmetry::Symm }));
 }
 

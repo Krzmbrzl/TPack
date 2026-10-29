@@ -74,7 +74,7 @@ namespace {
 	}
 
 	template< typename Combine >
-	void check_layout(const SlotDims &dims, const PartitionList &parts, const std::vector< Symmetry > &signs,
+	void check_layout(const SlotDims &dims, const PartitionList<> &parts, const std::vector< Symmetry > &signs,
 					  Combine combine, int identity, int target) {
 		const SectorLayout< int > layout(dims, parts, Constraint{ combine, identity, target }, signs);
 
@@ -144,7 +144,7 @@ namespace {
 TEST(TPack, SectorLayoutScalar) {
 	// No indices: a single sector of one entry iff the empty product (identity) hits the target.
 	check_layout({}, {}, {}, xor_combine, 0, 0);
-	const SectorLayout< int > empty_target(SlotDims{}, PartitionList{}, Constraint{ xor_combine, 0, 1 },
+	const SectorLayout< int > empty_target(SlotDims{}, PartitionList<>{}, Constraint{ xor_combine, 0, 1 },
 										   std::vector< Symmetry >{});
 	EXPECT_EQ(empty_target.size(), 0u);
 }

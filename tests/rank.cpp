@@ -135,7 +135,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(TPack, AntisymmetricRankRoundTrip) {
 	struct Case {
 		util::Dimensions dims;
-		PartitionList parts;
+		PartitionList<> parts;
 		std::vector< Symmetry > signs;
 	};
 

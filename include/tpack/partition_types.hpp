@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <utility>
+#include <vector>
 
 namespace tpack {
 
@@ -14,66 +15,78 @@ namespace tpack {
  * @brief A level of a partition: a list of tensor index positions.
  *
  * Satisfies the @c level concept.
+ *
+ * @tparam T The numeric type of the index positions.
  */
-class Level : public details::ForwardingVector< std::size_t > {
+template< typename T = std::size_t > class Level : public details::ForwardingVector< T > {
 public:
-	using ForwardingVector::ForwardingVector;
+	Level() = default;
+	Level(std::initializer_list< T > items) : Level::ForwardingVector(items) {}
+	explicit Level(std::vector< T > items) : Level::ForwardingVector(std::move(items)) {}
 
 	/**
 	 * @brief The index positions of this level.
 	 */
-	const std::vector< std::size_t > &indices() const { return m_items; }
+	const std::vector< T > &indices() const { return this->m_items; }
 };
 
 /**
  * @brief A partition: a list of levels of equal length.
  *
  * Satisfies the @c partition concept.
+ *
+ * @tparam T The numeric type of the index positions.
  */
-class Partition : public details::ForwardingVector< Level > {
+template< typename T = std::size_t > class Partition : public details::ForwardingVector< Level< T > > {
 public:
-	using ForwardingVector::ForwardingVector;
+	Partition() = default;
+	Partition(std::initializer_list< Level< T > > items) : Partition::ForwardingVector(items) {}
+	explicit Partition(std::vector< Level< T > > items) : Partition::ForwardingVector(std::move(items)) {}
 
 	/**
 	 * @brief The levels of this partition.
 	 */
-	const std::vector< Level > &levels() const { return m_items; }
+	const std::vector< Level< T > > &levels() const { return this->m_items; }
 
 	/**
 	 * @brief Appends a level.
 	 */
-	Partition &add_level(Level level) {
-		m_items.push_back(std::move(level));
+	Partition &add_level(Level< T > level) {
+		this->m_items.push_back(std::move(level));
 		return *this;
 	}
 
-	std::size_t num_levels() const { return m_items.size(); }
+	std::size_t num_levels() const { return this->m_items.size(); }
 
 	/**
 	 * @brief The number of columns, i.e. the length of every level.
 	 */
-	std::size_t num_columns() const { return m_items.empty() ? 0 : m_items.front().size(); }
+	std::size_t num_columns() const { return this->m_items.empty() ? 0 : this->m_items.front().size(); }
 };
 
 /**
  * @brief A list of partitions acting on disjoint tensor indices.
  *
  * Satisfies the @c sortable_partition_list concept.
+ *
+ * @tparam T The numeric type of the index positions.
  */
-class PartitionList : public details::ForwardingVector< Partition > {
+template< typename T = std::size_t > class PartitionList : public details::ForwardingVector< Partition< T > > {
 public:
-	using ForwardingVector::ForwardingVector;
+	PartitionList() = default;
+	PartitionList(std::initializer_list< Partition< T > > items) : PartitionList::ForwardingVector(items) {}
+	explicit PartitionList(std::vector< Partition< T > > items) : PartitionList::ForwardingVector(std::move(items)) {}
 
 	/**
 	 * @brief The partitions in this list.
 	 */
-	const std::vector< Partition > &partitions() const { return m_items; }
+	const std::vector< Partition< T > > &partitions() const { return this->m_items; }
 
 	/**
 	 * @brief Appends a partition.
 	 */
-	PartitionList &add_partition(Partition partition) {
-		m_items.push_back(std::move(partition));
+	PartitionList &add_partition(Partition< T > partition) {
+		this->m_items.push_back(std::move(partition));
 		return *this;
 	}
 };

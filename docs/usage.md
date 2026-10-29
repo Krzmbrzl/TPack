@@ -41,7 +41,8 @@ together, i.e. swapping index 0 with 1 forces index 2 to swap with 3 — the sym
 
 Nested `std::vector`s work but are hard to read. `<tpack/partition_types.hpp>` provides `Level`, `Partition` and `PartitionList`, which satisfy the
 same concepts and can be passed to every function in place of nested vectors. They are constructed from nested braces or built step by step, and
-offer named access (`levels()`, `partitions()`, `indices()`, `num_levels()`, `num_columns()`):
+offer named access (`levels()`, `partitions()`, `indices()`, `num_levels()`, `num_columns()`). They are templated on the numeric type of the index
+positions, which defaults to `std::size_t` (e.g. `tpack::PartitionList<int>`); spell the default as `PartitionList<>` where no type can be deduced:
 
 ```cpp
 tpack::PartitionList partitions = {{{0, 1}, {2, 3}}, {{4}}};
