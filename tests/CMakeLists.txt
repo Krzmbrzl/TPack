@@ -25,6 +25,7 @@ add_executable(tensor_packing_tests
 	"rank.cpp"
 	"rank_walker.cpp"
 	"sector_layout.cpp"
+	"sector_walker.cpp"
 )
 target_link_libraries(tensor_packing_tests PRIVATE tensor_packing gtest_main)
 set_target_properties(tensor_packing_tests PROPERTIES CXX_SCAN_FOR_MODULES OFF)

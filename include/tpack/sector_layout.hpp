@@ -24,6 +24,8 @@
 
 namespace tpack {
 
+template< label Label > class SectorWalker;
+
 /**
  * @brief A group selection rule restricting which label tuples carry data.
  *
@@ -259,6 +261,8 @@ public:
 	}
 
 private:
+	friend class SectorWalker< Label >;
+
 	/// The in-sector integer packing problem for one Sector: local dimensions plus the label-run-split
 	/// partitions and signs. Paired with the public Sector record at the same index in m_sectors / m_blocks.
 	struct SectorBlock {
