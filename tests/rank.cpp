@@ -135,7 +135,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(TPack, AntisymmetricRankRoundTrip) {
 	struct Case {
 		util::Dimensions dims;
-		util::PartitionList parts;
+		PartitionList parts;
 		std::vector< Symmetry > signs;
 	};
 
@@ -167,7 +167,7 @@ TEST(TPack, AntisymmetricScratchBufferOverloads) {
 	// details::index_scratch constraint must keep the scratch buffer and the sign array unambiguous during
 	// overload resolution.
 	const util::Dimensions dims{ 5, 5, 5 };
-	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const PartitionList parts{ { { 0, 1, 2 } } };
 	const std::vector< Symmetry > signs{ Symmetry::Antisymm };
 
 	const std::size_t n = num_orbits(dims, parts, signs);
@@ -188,7 +188,7 @@ TEST(TPack, ExplicitSignSpecForms) {
 	// The all_symmetric sentinel, spelled out, must behave exactly like the omitted default, and a single
 	// Symmetry like a per-partition range whose every entry is that Symmetry.
 	const util::Dimensions dims{ 4, 4, 3, 3 };
-	const util::PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
+	const PartitionList parts{ { { 0, 1 } }, { { 2, 3 } } };
 
 	const std::size_t symmetric = num_orbits(dims, parts);
 	EXPECT_EQ(num_orbits(dims, parts, all_symmetric), symmetric);
@@ -213,7 +213,7 @@ TEST(TPack, ExplicitSignSpecForms) {
 
 TEST(TPack, AlternativeScratchAndIndexingContainers) {
 	const util::Dimensions dims{ 5, 5, 5 };
-	const util::PartitionList parts{ { { 0, 1, 2 } } };
+	const PartitionList parts{ { { 0, 1, 2 } } };
 	const std::size_t n = num_orbits(dims, parts);
 
 	// A std::span over caller-owned storage satisfies the index_scratch concept, and a std::array works as the

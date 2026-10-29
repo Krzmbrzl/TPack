@@ -17,12 +17,14 @@ namespace tpack::details {
  */
 template< typename T > class ForwardingVector {
 public:
-	using value_type      = T;
-	using size_type       = std::size_t;
-	using iterator        = typename std::vector< T >::iterator;
-	using const_iterator  = typename std::vector< T >::const_iterator;
-	using reference       = T &;
-	using const_reference = const T &;
+	using value_type             = T;
+	using size_type              = std::size_t;
+	using iterator               = typename std::vector< T >::iterator;
+	using const_iterator         = typename std::vector< T >::const_iterator;
+	using reverse_iterator       = typename std::vector< T >::reverse_iterator;
+	using const_reverse_iterator = typename std::vector< T >::const_reverse_iterator;
+	using reference              = T &;
+	using const_reference        = const T &;
 
 	ForwardingVector() = default;
 	ForwardingVector(std::initializer_list< T > items) : m_items(items) {}
@@ -34,6 +36,16 @@ public:
 	const_iterator end() const { return m_items.end(); }
 	const_iterator cbegin() const { return m_items.cbegin(); }
 	const_iterator cend() const { return m_items.cend(); }
+
+	reverse_iterator rbegin() { return m_items.rbegin(); }
+	reverse_iterator rend() { return m_items.rend(); }
+	const_reverse_iterator rbegin() const { return m_items.rbegin(); }
+	const_reverse_iterator rend() const { return m_items.rend(); }
+
+	reference front() { return m_items.front(); }
+	reference back() { return m_items.back(); }
+	const_reference front() const { return m_items.front(); }
+	const_reference back() const { return m_items.back(); }
 
 	size_type size() const { return m_items.size(); }
 	bool empty() const { return m_items.empty(); }

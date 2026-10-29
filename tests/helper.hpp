@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include <vector>
+#include <tpack/partition_types.hpp>
+
 #include <iostream>
+#include <vector>
 
 namespace tpack::util {
 
 using Dimensions = std::vector< std::size_t >;
-
-using PartitionLevel = std::vector< std::size_t >;
-using Partition      = std::vector< PartitionLevel >;
-using PartitionList  = std::vector< Partition >;
 
 struct TensorInfo {
 	Dimensions dims;
@@ -61,7 +59,7 @@ inline TensorInfo make_info_p(std::vector< std::size_t > dims, Partition part) {
 	return { .dims = std::move(dims), .partitions = PartitionList{ { std::move(part) } } };
 }
 
-inline TensorInfo make_info_l(std::vector< std::size_t > dims, PartitionLevel level) {
+inline TensorInfo make_info_l(std::vector< std::size_t > dims, Level level) {
 	return { .dims = std::move(dims), .partitions = PartitionList{ Partition{ std::move(level) } } };
 }
 
