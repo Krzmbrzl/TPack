@@ -7,8 +7,11 @@
 #include <cstddef>
 #include <forward_list>
 #include <list>
+#include <map>
 #include <span>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -114,4 +117,48 @@ TEST(TPackConcepts, partition_signs) {
 	static_assert(!tpack::partition_signs< std::vector< int > >);
 	static_assert(!tpack::partition_signs< std::vector< std::size_t > >);
 	static_assert(!tpack::partition_signs< std::list< tpack::Symmetry > >);
+}
+
+TEST(TPackConcepts, labels) {
+	enum class Irrep { A, B };
+	struct Unordered {
+		bool operator==(const Unordered &) const = default;
+	};
+
+	static_assert(tpack::label< int >);
+	static_assert(tpack::label< Irrep >);
+	static_assert(tpack::label< std::string >);
+
+	static_assert(!tpack::label< int & >);
+	static_assert(!tpack::label< Unordered >);
+
+	auto xor_op = [](int lhs, int rhs) { return lhs ^ rhs; };
+	static_assert(tpack::label_combiner< decltype(xor_op), int >);
+	static_assert(tpack::label_combiner< decltype(xor_op), long >);
+	static_assert(!tpack::label_combiner< decltype(xor_op), std::string >);
+	static_assert(!tpack::label_combiner< int, int >);
+}
+
+TEST(TPackConcepts, labeled_dimensions) {
+	using Dims = std::vector< std::map< int, std::size_t > >;
+
+	static_assert(tpack::labeled_dimensions< Dims, int >);
+	static_assert(tpack::labeled_dimensions< std::vector< std::vector< std::pair< int, int > > >, int >);
+	static_assert(tpack::labeled_dimensions< std::array< std::array< std::tuple< int, std::size_t >, 2 >, 3 >, int >);
+
+	static_assert(!tpack::labeled_dimensions< Dims, std::string >);
+	static_assert(!tpack::labeled_dimensions< std::vector< int >, int >);
+	static_assert(!tpack::labeled_dimensions< std::vector< std::vector< int > >, int >);
+}
+
+TEST(TPackConcepts, labeled_indexing) {
+	using Indexing = std::vector< tpack::Labeled< int > >;
+
+	static_assert(tpack::labeled_indexing< Indexing, int >);
+	static_assert(tpack::labeled_indexing< const Indexing &, int >);
+	static_assert(!tpack::labeled_indexing< Indexing, long >);
+	static_assert(!tpack::labeled_indexing< std::vector< std::size_t >, int >);
+
+	static_assert(tpack::writable_labeled_indexing< Indexing &, int >);
+	static_assert(!tpack::writable_labeled_indexing< const Indexing &, int >);
 }

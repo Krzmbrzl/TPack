@@ -53,7 +53,7 @@ template< typename Label, typename Combine > struct Constraint {
  * @param target The required combined label of the stored quantity.
  * @return A Constraint using bitwise XOR as its @c combine.
  */
-template< typename Label > constexpr auto xor_constraint(Label identity, Label target) {
+template< label Label > constexpr auto xor_constraint(Label identity, Label target) {
 	constexpr auto combine = [](Label lhs, Label rhs) {
 		if constexpr (std::is_enum_v< Label >) {
 			using U = std::underlying_type_t< Label >;
@@ -80,7 +80,7 @@ template< typename Label > constexpr auto xor_constraint(Label identity, Label t
  *
  * @tparam Label The symmetry label type; must be totally ordered (see Labeled).
  */
-template< typename Label > class SectorLayout {
+template< label Label > class SectorLayout {
 public:
 	/// A partition as the collapsed-to-local packing sees it: a list of levels, each a list of slot positions.
 	using Partition = std::vector< std::vector< std::size_t > >;
@@ -110,7 +110,7 @@ public:
 	 * @pre The partitions cover every slot that is to be ranked (as for the integer API; a free index is a
 	 *      single-column partition).
 	 */
-	template< std::ranges::range Dims, std::ranges::range Partitions, typename Combine,
+	template< labeled_dimensions< Label > Dims, partition_list Partitions, label_combiner< Label > Combine,
 			  partition_signs Signs = all_symmetric_t >
 	SectorLayout(const Dims &dims, const Partitions &partitions, const Constraint< Label, Combine > &constraint,
 				 const Signs &signs = all_symmetric) {
@@ -173,7 +173,7 @@ public:
 	 * @param indexing The labelled indexing to test.
 	 * @return @c true if @p indexing is sector-major canonical.
 	 */
-	template< std::ranges::random_access_range Indexing > bool is_canonical(const Indexing &indexing) const {
+	template< labeled_indexing< Label > Indexing > bool is_canonical(const Indexing &indexing) const {
 		const auto it = std::ranges::begin(indexing);
 		auto label_of = [&](std::size_t slot) -> const Label & {
 			return it[static_cast< std::ptrdiff_t >(slot)].label;
@@ -197,7 +197,7 @@ public:
 	 *
 	 * @pre @p indexing is canonical (see is_canonical) and its label tuple is an allowed sector.
 	 */
-	template< std::ranges::random_access_range Indexing > std::size_t rank(const Indexing &indexing) const {
+	template< labeled_indexing< Label > Indexing > std::size_t rank(const Indexing &indexing) const {
 		using std::ranges::size;
 		assert(size(indexing) == m_num_slots);
 		assert(is_canonical(indexing));
@@ -224,7 +224,7 @@ public:
 	 *
 	 * @post is_canonical(indexing, ...) holds.
 	 */
-	template< std::ranges::random_access_range Indexing > void unrank(std::size_t rank, Indexing &indexing) const {
+	template< writable_labeled_indexing< Label > Indexing > void unrank(std::size_t rank, Indexing &indexing) const {
 		using std::ranges::size;
 		assert(rank < m_size);
 		assert(size(indexing) == m_num_slots);
@@ -250,7 +250,7 @@ public:
 	 * @param rank The rank to decode; must lie in @c [0, size()).
 	 * @return The reconstructed canonical labelled indexing, sized to the number of slots.
 	 */
-	template< std::ranges::random_access_range Indexing = std::vector< Labeled< Label > > >
+	template< writable_labeled_indexing< Label > Indexing = std::vector< Labeled< Label > > >
 	Indexing unrank(std::size_t rank) const {
 		Indexing indexing;
 		indexing.resize(m_num_slots);

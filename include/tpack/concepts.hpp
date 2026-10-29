@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/labeled.hpp>
 #include <tpack/symmetry.hpp>
 
 #include <compare>
@@ -9,6 +10,7 @@
 #include <cstddef>
 #include <iterator>
 #include <ranges>
+#include <tuple>
 #include <type_traits>
 
 namespace tpack {
@@ -126,5 +128,48 @@ concept partition_signs =
 	std::same_as<
 		std::remove_cvref_t< T >,
 		all_symmetric_t > || std::convertible_to< T, Symmetry > || (std::ranges::random_access_range< T > && std::same_as< std::ranges::range_value_t< T >, Symmetry >);
+
+/**
+ * @brief A symmetry label, e.g. an irrep of an abelian point group.
+ *
+ * Labels are copied, compared for equality, sorted and used as map keys.
+ */
+template< typename T > concept label = std::regular< T > &&std::three_way_comparable< T >;
+
+/**
+ * @brief A binary operation combining two labels into a label.
+ */
+template< typename T, typename Label >
+concept label_combiner = std::regular_invocable< T &, Label, Label >
+	&&std::convertible_to< std::invoke_result_t< T &, Label, Label >, Label >;
+
+/**
+ * @brief The labelled dimensions of all tensor indices.
+ *
+ * One entry per tensor index, each a range of tuple-like @c (label, count) entries (e.g. a
+ * @c std::map<Label, std::size_t>) giving the number of local values available for the label.
+ */
+template< typename T, typename Label >
+concept labeled_dimensions = std::ranges::input_range< T > &&
+	std::ranges::input_range< std::ranges::range_reference_t< T > > &&requires(
+		std::ranges::range_reference_t< std::ranges::range_reference_t< T > > entry) {
+	{ std::get< 0 >(entry) }
+	->std::convertible_to< Label >;
+	{ std::get< 1 >(entry) }
+	->std::convertible_to< std::size_t >;
+};
+
+/**
+ * @brief An indexing of Labeled values, one per tensor index, as consumed by SectorLayout.
+ */
+template< typename T, typename Label >
+concept labeled_indexing =
+	std::ranges::random_access_range< T > &&std::same_as< std::ranges::range_value_t< T >, Labeled< Label > >;
+
+/**
+ * @brief A labeled_indexing that can be filled with values, as produced by SectorLayout::unrank().
+ */
+template< typename T, typename Label >
+concept writable_labeled_indexing = labeled_indexing< T, Label > &&std::ranges::output_range< T, Labeled< Label > >;
 
 } // namespace tpack
