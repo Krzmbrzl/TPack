@@ -24,7 +24,45 @@ using PartitionList = std::vector< Partition >;
 
 using ArrayPartitionList = std::array< std::array< std::array< std::size_t, 2 >, 1 >, 1 >;
 
+// Tuple-like entries whose get() is only found via ADL, resp. as a member
+struct AdlEntry {
+	int label;
+	std::size_t count;
+};
+template< std::size_t N > decltype(auto) get(const AdlEntry &entry) {
+	if constexpr (N == 0) {
+		return (entry.label);
+	} else {
+		return (entry.count);
+	}
+}
+
+struct MemberEntry {
+	int label;
+	std::size_t count;
+
+	template< std::size_t N > decltype(auto) get() const {
+		if constexpr (N == 0) {
+			return (label);
+		} else {
+			return (count);
+		}
+	}
+};
+
+struct NotTupleLike {
+	int label;
+	std::size_t count;
+};
+
 } // namespace
+
+template<> struct std::tuple_size< AdlEntry > : std::integral_constant< std::size_t, 2 > {};
+template<> struct std::tuple_element< 0, AdlEntry > { using type = int; };
+template<> struct std::tuple_element< 1, AdlEntry > { using type = std::size_t; };
+template<> struct std::tuple_size< MemberEntry > : std::integral_constant< std::size_t, 2 > {};
+template<> struct std::tuple_element< 0, MemberEntry > { using type = int; };
+template<> struct std::tuple_element< 1, MemberEntry > { using type = std::size_t; };
 
 TEST(TPackConcepts, level) {
 	static_assert(tpack::level< Level >);
@@ -145,6 +183,11 @@ TEST(TPackConcepts, labeled_dimensions) {
 	static_assert(tpack::labeled_dimensions< Dims, int >);
 	static_assert(tpack::labeled_dimensions< std::vector< std::vector< std::pair< int, int > > >, int >);
 	static_assert(tpack::labeled_dimensions< std::array< std::array< std::tuple< int, std::size_t >, 2 >, 3 >, int >);
+
+	static_assert(tpack::labeled_dimensions< std::vector< std::vector< AdlEntry > >, int >);
+	static_assert(tpack::labeled_dimensions< std::vector< std::vector< MemberEntry > >, int >);
+	static_assert(!tpack::labeled_dimensions< std::vector< std::vector< NotTupleLike > >, int >);
+	static_assert(!tpack::labeled_dimensions< std::vector< std::vector< std::tuple< int, int, int > > >, int >);
 
 	static_assert(!tpack::labeled_dimensions< Dims, std::string >);
 	static_assert(!tpack::labeled_dimensions< std::vector< int >, int >);

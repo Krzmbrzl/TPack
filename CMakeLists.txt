@@ -20,6 +20,7 @@ target_sources(tensor_packing
 		"include/tpack/details/level_columns_view.hpp"
 		"include/tpack/details/levels.hpp"
 		"include/tpack/details/symmetry.hpp"
+		"include/tpack/details/tuple_like.hpp"
 		"include/tpack/indexing.hpp"
 		"include/tpack/labeled.hpp"
 		"include/tpack/orbit.hpp"

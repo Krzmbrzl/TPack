@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/details/tuple_like.hpp>
 #include <tpack/labeled.hpp>
 #include <tpack/symmetry.hpp>
 
@@ -10,7 +11,6 @@
 #include <cstddef>
 #include <iterator>
 #include <ranges>
-#include <tuple>
 #include <type_traits>
 
 namespace tpack {
@@ -151,11 +151,12 @@ concept label_combiner = std::regular_invocable< T &, Label, Label >
  */
 template< typename T, typename Label >
 concept labeled_dimensions = std::ranges::input_range< T > &&
-	std::ranges::input_range< std::ranges::range_reference_t< T > > &&requires(
-		std::ranges::range_reference_t< std::ranges::range_reference_t< T > > entry) {
-	{ std::get< 0 >(entry) }
+	std::ranges::input_range< std::ranges::range_reference_t< T > > &&
+		details::tuple_like_of_size< std::ranges::range_reference_t< std::ranges::range_reference_t< T > >, 2 >
+			&&requires(std::ranges::range_reference_t< std::ranges::range_reference_t< T > > entry) {
+	{ details::get_element< 0 >(entry) }
 	->std::convertible_to< Label >;
-	{ std::get< 1 >(entry) }
+	{ details::get_element< 1 >(entry) }
 	->std::convertible_to< std::size_t >;
 };
 
