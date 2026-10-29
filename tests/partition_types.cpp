@@ -30,6 +30,14 @@ TEST(TPack, PartitionTypesTest_named_access) {
 	EXPECT_EQ(Partition{}.num_columns(), 0u);
 }
 
+TEST(TPack, PartitionTypesTest_builder) {
+	PartitionList built;
+	built.add_partition(Partition{}.add_level({ 0, 1 }).add_level({ 2, 3 }))
+		.add_partition(Partition{}.add_level({ 4 }));
+
+	EXPECT_EQ(built, (PartitionList{ { { 0, 1 }, { 2, 3 } }, { { 4 } } }));
+}
+
 TEST(TPack, PartitionTypesTest_matches_nested_vectors) {
 	const PartitionList list                                              = { { { 0, 1 }, { 2, 3 } }, { { 4 } } };
 	const std::vector< std::vector< std::vector< std::size_t > > > nested = { { { 0, 1 }, { 2, 3 } }, { { 4 } } };

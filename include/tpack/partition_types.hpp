@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <utility>
 
 namespace tpack {
 
@@ -38,6 +39,14 @@ public:
 	 */
 	const std::vector< Level > &levels() const { return m_items; }
 
+	/**
+	 * @brief Appends a level.
+	 */
+	Partition &add_level(Level level) {
+		m_items.push_back(std::move(level));
+		return *this;
+	}
+
 	std::size_t num_levels() const { return m_items.size(); }
 
 	/**
@@ -59,6 +68,14 @@ public:
 	 * @brief The partitions in this list.
 	 */
 	const std::vector< Partition > &partitions() const { return m_items; }
+
+	/**
+	 * @brief Appends a partition.
+	 */
+	PartitionList &add_partition(Partition partition) {
+		m_items.push_back(std::move(partition));
+		return *this;
+	}
 };
 
 } // namespace tpack
