@@ -36,7 +36,7 @@ namespace details {
 	 * @param dims The dimension of every index.
 	 * @return @c true if, within each level, all indices share the same dimension.
 	 */
-	template< std::ranges::range PartLevels, std::ranges::random_access_range Dimensions >
+	template< std::ranges::range PartLevels, dimensions Dimensions >
 	constexpr bool levels_have_uniform_dimension(const PartLevels &part_levels, const Dimensions &dims) {
 		using std::ranges::begin;
 
@@ -103,12 +103,10 @@ namespace details {
  * @pre Within every level of a partition, all indices share the same dimension.
  * @see unrank, num_orbits, is_canonical
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
+template< integral_indexing Indexing, index_scratch EffectiveIndexing, dimensions Dimensions, partition_list Partitions,
 		  partition_signs Signs = all_symmetric_t >
-requires index_scratch< EffectiveIndexing > constexpr std::size_t
-	rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions, EffectiveIndexing &&effective_idx,
-		 const Signs &signs = all_symmetric) {
+constexpr std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
+						   EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -191,8 +189,8 @@ requires index_scratch< EffectiveIndexing > constexpr std::size_t
  * @pre @p indexing is canonical (see is_canonical) and @c size(indexing) == size(dims).
  * @see unrank, num_orbits
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, partition_signs Signs = all_symmetric_t >
+template< integral_indexing Indexing, dimensions Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
 std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 
@@ -236,12 +234,10 @@ std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions
  * @post is_canonical(indexing, partitions, signs) holds.
  * @see rank, num_orbits
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, partition_list Partitions,
-		  partition_signs Signs = all_symmetric_t >
-requires index_scratch< EffectiveIndexing > constexpr void
-	unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
-		   EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
+template< writable_integral_indexing Indexing, index_scratch EffectiveIndexing, dimensions Dimensions,
+		  partition_list Partitions, partition_signs Signs = all_symmetric_t >
+constexpr void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
+					  EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
 	using std::ranges::end;
 	using std::ranges::size;
@@ -381,8 +377,8 @@ requires index_scratch< EffectiveIndexing > constexpr void
  * @post is_canonical(indexing, partitions, signs) holds.
  * @see rank
  */
-template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  partition_list Partitions, partition_signs Signs = all_symmetric_t >
+template< writable_integral_indexing Indexing, dimensions Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
 void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
 			const Signs &signs = all_symmetric) {
 	using std::ranges::size;
@@ -411,9 +407,8 @@ void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions
  * @post is_canonical(return value, partitions, signs) holds.
  * @see rank
  */
-template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
-		  std::ranges::random_access_range Dimensions, partition_list Partitions,
-		  partition_signs Signs = all_symmetric_t >
+template< writable_integral_indexing Indexing = std::vector< std::size_t >, dimensions Dimensions,
+		  partition_list Partitions, partition_signs Signs = all_symmetric_t >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 

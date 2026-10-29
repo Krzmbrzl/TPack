@@ -43,7 +43,7 @@ namespace details {
 	 * @param signs [in,out] The per-partition sign array to reorder in lockstep; a single Symmetry and the
 	 *        all_symmetric_t sentinel apply uniformly and leave nothing to reorder.
 	 */
-	template< bool col_major, std::ranges::range Partitions, partition_signs Signs = all_symmetric_t >
+	template< bool col_major, sortable_partition_list Partitions, partition_signs Signs = all_symmetric_t >
 	void sort_partitions(Partitions &&partitions, Signs &&signs = all_symmetric_t{}) {
 		using std::ranges::begin;
 
@@ -116,7 +116,7 @@ enum class IndexOrder { ColumnMajor, RowMajor };
  * @param partitions [in,out] The partition specification to reorder in place.
  * @param signs [in,out] An optional per-partition sign array, reordered in lockstep with the partitions.
  */
-template< IndexOrder Order      = IndexOrder::ColumnMajor, std::ranges::range Partitions,
+template< IndexOrder Order      = IndexOrder::ColumnMajor, sortable_partition_list Partitions,
 		  partition_signs Signs = all_symmetric_t >
 void sort_partitions(Partitions &&partitions, Signs &&signs = all_symmetric_t{}) {
 	details::sort_partitions< Order == IndexOrder::ColumnMajor >(partitions, signs);
