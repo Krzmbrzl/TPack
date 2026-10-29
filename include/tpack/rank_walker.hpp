@@ -100,6 +100,10 @@ private:
 		std::vector< std::size_t > effective;
 	};
 
+	std::vector< std::size_t > m_indexing;
+	std::vector< Part > m_parts;
+	std::size_t m_rank = 0;
+
 	/// Sets all columns from @p first on to the smallest values allowed after the preceding ones and writes them
 	/// into the indexing.
 	void fill_from(Part &part, std::size_t first) {
@@ -129,10 +133,6 @@ private:
 		reset(part);
 		return false;
 	}
-
-	std::vector< std::size_t > m_indexing;
-	std::vector< Part > m_parts;
-	std::size_t m_rank = 0;
 };
 
 } // namespace tpack
