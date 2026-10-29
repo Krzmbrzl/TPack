@@ -19,4 +19,5 @@
 #include <tpack/rank.hpp>
 #include <tpack/rank_walker.hpp>
 #include <tpack/sector_layout.hpp>
+#include <tpack/sector_walker.hpp>
 #include <tpack/symmetry.hpp>

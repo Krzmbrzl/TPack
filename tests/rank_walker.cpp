@@ -90,4 +90,26 @@ TEST(TPackRankWalker, default_signs_are_symmetric) {
 	}
 }
 
+TEST(TPackRankWalker, assign_retargets_walker) {
+	const std::vector< std::size_t > dims1                                     = { 5, 5, 5 };
+	const std::vector< std::vector< std::vector< std::size_t > > > partitions1 = { { { 0, 1, 2 } } };
+	const std::vector< std::size_t > dims2                                     = { 3, 3, 4, 4, 2 };
+	const std::vector< std::vector< std::vector< std::size_t > > > partitions2 = { { { 0, 1 }, { 2, 3 } }, { { 4 } } };
+
+	RankWalker walker(dims1, partitions1, Symmetry::Antisymm);
+	walker.next();
+
+	walker.assign(dims2, partitions2);
+	for (std::size_t r = 0; r < num_orbits(dims2, partitions2); ++r) {
+		ASSERT_EQ(walker.rank(), r);
+		ASSERT_EQ(walker.indexing(), unrank(r, dims2, partitions2));
+		walker.next();
+	}
+
+	// Shrinking back to the first problem leaves no state behind
+	walker.assign(dims1, partitions1, Symmetry::Antisymm);
+	EXPECT_EQ(walker.rank(), 0);
+	EXPECT_EQ(walker.indexing(), unrank(0, dims1, partitions1, Symmetry::Antisymm));
+}
+
 } // namespace tpack::tests

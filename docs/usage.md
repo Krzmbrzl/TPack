@@ -15,6 +15,7 @@ the entire public API at once, or include the individual headers below.
 | `<tpack/partition_types.hpp>` | `Level`, `Partition`, `PartitionList` |
 | `<tpack/labeled.hpp>` | `Labeled` |
 | `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint`, `xor_constraint` |
+| `<tpack/sector_walker.hpp>` | `SectorWalker` |
 
 ## Describing a symmetry
 
@@ -411,6 +412,35 @@ int main() {
 		assert(layout.rank(idx) == r);
 		std::cout << "Computed rank " << layout.rank(idx) << " == " << r << "\n";
 	}
+
+	return 0;
+}
+```
+
+To sweep all of a layout's entries, `tpack::SectorWalker<Label>` is the labelled counterpart of [`RankWalker`](#rankwalker): constructed from a
+`SectorLayout` (which must outlive it and be non-empty), it exposes `next()`, `rank()` and `indexing()` and visits the same indexings as
+`layout.unrank(0), layout.unrank(1), ...`, advancing in place instead of decoding every rank from scratch.
+
+<!-- tpack-snippet: name=usage_sector_walker mode=program -->
+```cpp
+#include <tpack/sector_layout.hpp>
+#include <tpack/sector_walker.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <map>
+#include <vector>
+
+int main() {
+	const std::vector<std::map<int, std::size_t>> dims = {{{0, 2}, {1, 2}}, {{0, 2}, {1, 2}}};
+	const std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
+
+	const tpack::SectorLayout<int> layout(dims, partitions, tpack::xor_constraint(0, 0));
+
+	tpack::SectorWalker<int> walker(layout);
+	do {
+		assert(walker.indexing() == layout.unrank(walker.rank()));
+	} while (walker.next());
 
 	return 0;
 }
