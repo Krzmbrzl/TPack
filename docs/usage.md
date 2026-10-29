@@ -10,6 +10,7 @@ the entire public API at once, or include the individual headers below.
 | `<tpack/orbit.hpp>` | `num_orbits`, `orbit_size`, `next_orbit_representative`, `OrbitStep` |
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
+| `<tpack/rank_walker.hpp>` | `RankWalker` |
 | `<tpack/partition.hpp>` | `sort_partitions`, `IndexOrder` |
 | `<tpack/partition_types.hpp>` | `Level`, `Partition`, `PartitionList` |
 | `<tpack/labeled.hpp>` | `Labeled` |
@@ -169,6 +170,30 @@ for (std::size_t r = 0; r < count; ++r) {
 Passing a non-canonical indexing to `rank` is a precondition violation (checked by assertions); canonicalise it first with
 `canonicalize`. Both functions also offer an overload taking an explicit scratch buffer (`effective_idx`) to avoid the internal
 thread-local allocation in hot loops; those overloads are `constexpr`.
+
+### `RankWalker`
+
+```
+RankWalker walker(dims, parts, signs = {});   // positioned at rank 0
+bool walker.next();                           // advance by one rank; false (and wrap to 0) after the last
+std::size_t walker.rank();
+const std::vector<std::size_t> &walker.indexing();
+```
+
+`RankWalker` visits the same indexings as calling `unrank` for `0, 1, 2, ...`, but keeps the current indexing as state and only updates the
+trailing columns that change from one rank to the next. This avoids the greedy binomial search that `unrank` has to repeat for every rank, which
+makes it the better choice when running through an entire index space.
+
+<!-- tpack-snippet: name=usage_rank_walker -->
+```cpp
+std::vector<std::size_t> dims = {3, 3, 5, 5};
+std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}, {2, 3}}};
+
+tpack::RankWalker walker(dims, partitions);
+do {
+	assert(walker.indexing() == tpack::unrank(walker.rank(), dims, partitions));
+} while (walker.next());
+```
 
 ### `is_canonical` / `next_orbit_representative`
 
