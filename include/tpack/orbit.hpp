@@ -48,8 +48,7 @@ namespace tpack {
  * @pre Within every level of a partition, all referenced indices share the same dimension.
  * @see rank, unrank
  */
-template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  partition_signs Signs = all_symmetric_t >
+template< dimensions Dimensions, partition_list Partitions, partition_signs Signs = all_symmetric_t >
 constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	details::assert_signs_match(signs, partitions);
 
@@ -164,8 +163,7 @@ struct OrbitStep {
  *
  * @see is_canonical, OrbitStep
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  partition_signs Signs = all_symmetric_t >
+template< mutable_tensor_indexing Indexing, partition_list Partitions, partition_signs Signs = all_symmetric_t >
 constexpr OrbitStep next_orbit_representative(Indexing &&indexing, Partitions &&partitions,
 											  const Signs &signs = all_symmetric, int phase = 1) {
 	details::assert_signs_match(signs, partitions);
@@ -213,8 +211,7 @@ constexpr OrbitStep next_orbit_representative(Indexing &&indexing, Partitions &&
  *
  * @pre If @p indexing_canonical is @c true, @p indexing must actually be a canonical representative.
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  partition_signs Signs = all_symmetric_t >
+template< tensor_indexing Indexing, partition_list Partitions, partition_signs Signs = all_symmetric_t >
 constexpr std::size_t orbit_size(Indexing &&indexing, Partitions &&partitions, const Signs &signs = all_symmetric,
 								 bool indexing_canonical = false) {
 	details::assert_signs_match(signs, partitions);

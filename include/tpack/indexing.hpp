@@ -41,8 +41,7 @@ namespace tpack {
  *
  * @see canonicalize, next_orbit_representative, rank
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
-		  partition_signs Signs = all_symmetric_t >
+template< tensor_indexing Indexing, partition_list Partitions, partition_signs Signs = all_symmetric_t >
 constexpr bool is_canonical(Indexing &&indexing, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	auto key = [&](std::size_t slot) -> decltype(auto) { return indexing[slot]; };
 
@@ -56,7 +55,7 @@ namespace details {
 	/**
 	 * @brief Shared implementation of canonicalize; see the public overloads for the contract.
 	 */
-	template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, partition_signs Signs >
+	template< mutable_tensor_indexing Indexing, partition_list Partitions, partition_signs Signs >
 	constexpr int canonicalize_impl(Indexing &indexing, Partitions &&partitions, const Signs &signs) {
 		assert_signs_match(signs, partitions);
 
@@ -122,7 +121,7 @@ namespace details {
  *
  * @see is_canonical
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions >
+template< mutable_tensor_indexing Indexing, partition_list Partitions >
 constexpr int canonicalize(Indexing &&indexing, Partitions &&partitions, all_symmetric_t signs = {}) {
 	return details::canonicalize_impl(indexing, partitions, signs);
 }
@@ -151,7 +150,7 @@ constexpr int canonicalize(Indexing &&indexing, Partitions &&partitions, all_sym
  *
  * @see is_canonical
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, partition_signs Signs >
+template< mutable_tensor_indexing Indexing, partition_list Partitions, partition_signs Signs >
 requires(!std::same_as< std::remove_cvref_t< Signs >, all_symmetric_t >)
 	[[nodiscard]] constexpr int canonicalize(Indexing &&indexing, Partitions &&partitions, const Signs &signs) {
 	return details::canonicalize_impl(indexing, partitions, signs);
