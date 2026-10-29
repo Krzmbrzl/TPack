@@ -17,7 +17,7 @@ static_assert(level< Level<> >);
 static_assert(partition< Partition<> >);
 static_assert(partition_list< PartitionList<> >);
 static_assert(sortable_partition_list< PartitionList<> >);
-static_assert(sortable_partition_list< PartitionList< int > >);
+static_assert(sortable_partition_list< PartitionList< unsigned > >);
 static_assert(std::same_as< PartitionList<>, PartitionList< std::size_t > >);
 
 TEST(TPack, PartitionTypesTest_named_access) {
@@ -42,11 +42,11 @@ TEST(TPack, PartitionTypesTest_builder) {
 }
 
 TEST(TPack, PartitionTypesTest_other_numeric_type) {
-	const PartitionList< int > list       = { { { 0, 1 } }, { { 2 } } };
+	const PartitionList< unsigned > list  = { { { 0, 1 } }, { { 2 } } };
 	const std::vector< std::size_t > dims = { 3, 3, 2 };
 
 	EXPECT_EQ(num_orbits(dims, list), 12u);
-	EXPECT_EQ(list[0][0][1], 1);
+	EXPECT_EQ(list[0][0][1], 1u);
 }
 
 TEST(TPack, PartitionTypesTest_matches_nested_vectors) {
