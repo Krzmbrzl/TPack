@@ -43,22 +43,40 @@ public:
 	 * @pre Within every level of a partition, all indices share the same dimension.
 	 */
 	template< dimensions Dimensions, partition_list Partitions, partition_signs Signs = all_symmetric_t >
-	RankWalker(Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric)
-		: m_indexing(std::ranges::size(dims), 0) {
+	RankWalker(Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
+		assign(dims, partitions, signs);
+	}
+
+	/**
+	 * @brief Re-targets the walker to a new problem and positions it at rank 0.
+	 *
+	 * Equivalent to constructing a new walker, but reuses the storage of this one.
+	 *
+	 * @see RankWalker(Dimensions &&, Partitions &&, const Signs &) for the parameters and preconditions.
+	 */
+	template< dimensions Dimensions, partition_list Partitions, partition_signs Signs = all_symmetric_t >
+	void assign(const Dimensions &dims, const Partitions &partitions, const Signs &signs = all_symmetric) {
 		details::assert_signs_match(signs, partitions);
+
+		m_indexing.assign(std::ranges::size(dims), 0);
+		m_rank = 0;
+		m_parts.resize(std::ranges::size(partitions));
 
 		std::size_t part_index = 0;
 		for (auto &&part_levels : partitions) {
-			Part &part = m_parts.emplace_back();
+			Part &part = m_parts[part_index];
 
 			part.antisym = details::antisymmetric_at(signs, part_index);
 			++part_index;
 
 			part.num_cols = details::num_columns(part_levels);
 			part.dim      = details::effective_dim(dims, part_levels);
-			part.strides  = details::level_strides(dims, part_levels);
+			details::assign_level_strides(dims, part_levels, part.strides);
+
+			part.levels.resize(std::ranges::size(part_levels));
+			std::size_t level_index = 0;
 			for (auto &&level : part_levels) {
-				part.levels.emplace_back(std::ranges::begin(level), std::ranges::end(level));
+				part.levels[level_index++].assign(std::ranges::begin(level), std::ranges::end(level));
 			}
 
 			part.effective.resize(part.num_cols);

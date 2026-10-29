@@ -40,23 +40,39 @@ constexpr std::size_t effective_dim(const Dimensions &dims, const Partition &par
 }
 
 /**
- * @brief The stride of every level within the merged effective index of a partition.
+ * @brief Computes the stride of every level within the merged effective index of a partition into @p strides.
  *
  * The first level is the least significant one (stride 1); each further level is scaled by the dimension of the
- * levels before it.
+ * levels before it. Reuses the storage of @p strides.
+ *
+ * @param dims The per-index dimensions.
+ * @param part The partition, a range of levels.
+ * @param strides [out] Overwritten with one stride per level, in level order.
+ */
+template< typename Dimensions, typename Partition >
+constexpr void assign_level_strides(const Dimensions &dims, const Partition &part,
+									std::vector< std::size_t > &strides) {
+	strides.clear();
+	std::size_t stride = 1;
+	for (auto &&level : part) {
+		strides.emplace_back(stride);
+		stride *= dims[*std::ranges::begin(level)];
+	}
+}
+
+/**
+ * @brief The stride of every level within the merged effective index of a partition.
  *
  * @param dims The per-index dimensions.
  * @param part The partition, a range of levels.
  * @return One stride per level, in level order.
+ *
+ * @see assign_level_strides
  */
 template< typename Dimensions, typename Partition >
 constexpr std::vector< std::size_t > level_strides(const Dimensions &dims, const Partition &part) {
 	std::vector< std::size_t > strides;
-	strides.emplace_back(1);
-	for (auto &&level : part) {
-		strides.emplace_back(dims[*std::ranges::begin(level)] * strides.back());
-	}
-	strides.pop_back();
+	assign_level_strides(dims, part, strides);
 
 	return strides;
 }
