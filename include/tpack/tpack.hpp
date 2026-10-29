@@ -15,6 +15,7 @@
 #include <tpack/labeled.hpp>
 #include <tpack/orbit.hpp>
 #include <tpack/partition.hpp>
+#include <tpack/partition_types.hpp>
 #include <tpack/rank.hpp>
 #include <tpack/sector_layout.hpp>
 #include <tpack/symmetry.hpp>
