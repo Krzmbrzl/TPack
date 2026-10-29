@@ -18,9 +18,12 @@ the entire public API at once, or include the individual headers below.
 
 Every function takes the same two descriptors (see [Core vocabulary](README.md#core-vocabulary)):
 
-- `dims` — a random-access range giving the dimension of each index.
-- `partitions` — a range of partitions. A partition is a range of levels; a level is a range of index positions. All levels of one partition must have
-  the same length, and every index inside a single level must share the same dimension.
+- `dims` — a random-access range giving the dimension of each index (`tpack::dimensions`).
+- `partitions` — a bidirectional range of partitions (`tpack::partition_list`). A partition is a bidirectional range of levels (`tpack::partition`); a
+  level is a random-access range of index positions (`tpack::level`). All levels of one partition must have the same length, and every index inside a
+  single level must share the same dimension.
+
+All of these requirements are spelled out as concepts in `<tpack/concepts.hpp>`.
 
 For a symmetric matrix `A(i, j) == A(j, i)` over a `5 x 5` grid, indices `0` and `1` form one partition with a single level containing both:
 
