@@ -2,7 +2,10 @@
 
 #include <tpack/orbit.hpp>
 #include <tpack/rank.hpp>
+#include <tpack/rank_walker.hpp>
+#include <tpack/symmetry.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <random>
 #include <vector>
@@ -109,3 +112,74 @@ static void BM_unrank_with_access(benchmark::State &state) {
 }
 
 BENCHMARK(BM_unrank_with_access);
+
+
+namespace {
+
+struct SweepConfig {
+	std::vector< std::vector< std::vector< std::size_t > > > partitions;
+	std::vector< std::size_t > dimensions;
+	tpack::Symmetry symmetry;
+};
+
+// Args: partitions, levels, columns, antisymmetric (0/1)
+SweepConfig make_sweep_config(const benchmark::State &state) {
+	SweepConfig config{ {}, {}, state.range(3) ? tpack::Symmetry::Antisymm : tpack::Symmetry::Symm };
+
+	std::size_t counter = 0;
+	for (std::int64_t part = 0; part < state.range(0); ++part) {
+		config.partitions.emplace_back();
+		for (std::int64_t level = 0; level < state.range(1); ++level) {
+			config.partitions.back().emplace_back();
+			for (std::int64_t col = 0; col < state.range(2); ++col) {
+				config.partitions.back().back().emplace_back(counter++);
+				config.dimensions.emplace_back(4);
+			}
+		}
+	}
+
+	return config;
+}
+
+} // namespace
+
+// Runs through all ranks by calling unrank for every single one of them
+static void BM_unrank_sweep(benchmark::State &state) {
+	const SweepConfig config = make_sweep_config(state);
+	const std::size_t count  = tpack::num_orbits(config.dimensions, config.partitions, config.symmetry);
+
+	std::vector< std::size_t > indexing(config.dimensions.size());
+
+	for (auto _ : state) {
+		for (std::size_t rank = 0; rank < count; ++rank) {
+			tpack::unrank(rank, indexing, config.dimensions, config.partitions, config.symmetry);
+			benchmark::DoNotOptimize(indexing);
+		}
+	}
+
+	state.SetItemsProcessed(state.iterations() * static_cast< std::int64_t >(count));
+}
+
+// Runs through all ranks by incrementally advancing a RankWalker
+static void BM_rank_walker_sweep(benchmark::State &state) {
+	const SweepConfig config = make_sweep_config(state);
+	const std::size_t count  = tpack::num_orbits(config.dimensions, config.partitions, config.symmetry);
+
+	tpack::RankWalker walker(config.dimensions, config.partitions, config.symmetry);
+
+	for (auto _ : state) {
+		// The walker wraps around to rank 0 after the last rank, so it is ready for the next iteration.
+		do {
+			// The indexing is only exposed as const, so make the compiler assume that its contents are read.
+			benchmark::DoNotOptimize(walker.indexing().data());
+			benchmark::ClobberMemory();
+		} while (walker.next());
+	}
+
+	state.SetItemsProcessed(state.iterations() * static_cast< std::int64_t >(count));
+}
+
+// clang-format off
+BENCHMARK(BM_unrank_sweep)->ArgsProduct({ { 1, 2 }, { 1, 2 }, { 1, 2, 3 }, { 0, 1 } });
+BENCHMARK(BM_rank_walker_sweep)->ArgsProduct({ { 1, 2 }, { 1, 2 }, { 1, 2, 3 }, { 0, 1 } });
+// clang-format on

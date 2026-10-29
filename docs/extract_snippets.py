@@ -42,6 +42,7 @@ DEFAULT_WRAP_HEADERS = [
     "tpack/orbit.hpp",
     "tpack/partition.hpp",
     "tpack/rank.hpp",
+    "tpack/rank_walker.hpp",
     "cassert",
     "cstddef",
     "vector",

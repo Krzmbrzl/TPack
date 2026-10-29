@@ -332,23 +332,9 @@ constexpr void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, 
 
 		// Transform effective indexing into actual indexing by splitting
 		// effective indices back into their individual elements
-		std::vector< std::size_t > level_strides;
-		level_strides.emplace_back(1);
-		for (auto &&level : part_levels) {
-			level_strides.emplace_back(dims[*begin(level)] * level_strides.back());
-		}
-		level_strides.pop_back();
-
-		std::size_t level = level_strides.size() - 1;
-		for (auto &&current : std::ranges::views::reverse(part_levels)) {
-			std::size_t col = 0;
-			for (auto val : current) {
-				indexing[val] = effective_idx[col] / level_strides[level];
-				effective_idx[col] -= indexing[val] * level_strides[level];
-
-				++col;
-			}
-			--level;
+		const std::vector< std::size_t > strides = details::level_strides(dims, part_levels);
+		for (std::size_t col = 0; col < effective_size; ++col) {
+			details::split_column(part_levels, strides, col, effective_idx[col], indexing);
 		}
 	}
 

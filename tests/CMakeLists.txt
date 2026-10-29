@@ -23,6 +23,7 @@ add_executable(tensor_packing_tests
 	"partition.cpp"
 	"partition_types.cpp"
 	"rank.cpp"
+	"rank_walker.cpp"
 	"sector_layout.cpp"
 )
 target_link_libraries(tensor_packing_tests PRIVATE tensor_packing gtest_main)

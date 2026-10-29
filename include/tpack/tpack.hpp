@@ -17,5 +17,6 @@
 #include <tpack/partition.hpp>
 #include <tpack/partition_types.hpp>
 #include <tpack/rank.hpp>
+#include <tpack/rank_walker.hpp>
 #include <tpack/sector_layout.hpp>
 #include <tpack/symmetry.hpp>
