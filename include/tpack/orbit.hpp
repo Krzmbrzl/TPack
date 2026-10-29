@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/concepts.hpp>
 #include <tpack/details/apply_permutation.hpp>
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/level_columns_view.hpp>
@@ -48,7 +49,7 @@ namespace tpack {
  * @see rank, unrank
  */
 template< std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  signs_spec Signs = all_symmetric_t >
+		  partition_signs Signs = all_symmetric_t >
 constexpr std::size_t num_orbits(Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	details::assert_signs_match(signs, partitions);
 
@@ -163,7 +164,8 @@ struct OrbitStep {
  *
  * @see is_canonical, OrbitStep
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
+		  partition_signs Signs = all_symmetric_t >
 constexpr OrbitStep next_orbit_representative(Indexing &&indexing, Partitions &&partitions,
 											  const Signs &signs = all_symmetric, int phase = 1) {
 	details::assert_signs_match(signs, partitions);
@@ -211,7 +213,8 @@ constexpr OrbitStep next_orbit_representative(Indexing &&indexing, Partitions &&
  *
  * @pre If @p indexing_canonical is @c true, @p indexing must actually be a canonical representative.
  */
-template< std::ranges::random_access_range Indexing, std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+template< std::ranges::random_access_range Indexing, std::ranges::range Partitions,
+		  partition_signs Signs = all_symmetric_t >
 constexpr std::size_t orbit_size(Indexing &&indexing, Partitions &&partitions, const Signs &signs = all_symmetric,
 								 bool indexing_canonical = false) {
 	details::assert_signs_match(signs, partitions);

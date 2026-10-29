@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/concepts.hpp>
 #include <tpack/details/canonical.hpp>
 #include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
@@ -110,7 +111,7 @@ public:
 	 *      single-column partition).
 	 */
 	template< std::ranges::range Dims, std::ranges::range Partitions, typename Combine,
-			  signs_spec Signs = all_symmetric_t >
+			  partition_signs Signs = all_symmetric_t >
 	SectorLayout(const Dims &dims, const Partitions &partitions, const Constraint< Label, Combine > &constraint,
 				 const Signs &signs = all_symmetric) {
 		using std::ranges::begin;

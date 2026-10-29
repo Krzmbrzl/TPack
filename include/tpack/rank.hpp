@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/concepts.hpp>
 #include <tpack/details/binomial.hpp>
 #include <tpack/details/canonical.hpp>
 #include <tpack/details/levels.hpp>
@@ -69,28 +70,6 @@ namespace details {
 } // namespace details
 
 /**
- * @brief A caller-provided scratch buffer for the collapsed effective index: a random-access range of
- *        std::size_t.
- *
- * Constraining the scratch parameter positively (rather than as "not a signs spec") keeps the scratch-taking
- * rank()/unrank() overloads unambiguous against the ones taking only a sign argument, without depending on
- * what a sign spec happens not to be.
- */
-template< typename T >
-concept index_scratch =
-	std::ranges::random_access_range< T > &&std::same_as< std::ranges::range_value_t< T >, std::size_t >;
-
-/**
- * @brief A partition specification: a range of partitions, each itself a range of levels.
- *
- * The shape every entry point accepts for its partitions argument. Constraining on it also keeps the in-place
- * unrank() overloads unambiguous against the return-by-value one: with the rank passed first, a sign range
- * (a range of Symmetry) can never be mistaken for the partitions.
- */
-template< typename T >
-concept partitions_spec = std::ranges::range< T > &&std::ranges::range< std::ranges::range_value_t< T > >;
-
-/**
  * @brief Computes the packed rank (storage offset) of a canonical indexing.
  *
  * Maps a canonical representative to a contiguous integer in @c [0, num_orbits(dims, partitions)). Each partition
@@ -126,8 +105,8 @@ concept partitions_spec = std::ranges::range< T > &&std::ranges::range< std::ran
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
 		  std::ranges::random_access_range Dimensions, std::ranges::range Partitions,
-		  signs_spec Signs = all_symmetric_t >
-requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr std::size_t
+		  partition_signs Signs = all_symmetric_t >
+requires index_scratch< EffectiveIndexing > constexpr std::size_t
 	rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions, EffectiveIndexing &&effective_idx,
 		 const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
@@ -213,7 +192,7 @@ requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr std
  * @see unrank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  std::ranges::range Partitions, signs_spec Signs = all_symmetric_t >
+		  std::ranges::range Partitions, partition_signs Signs = all_symmetric_t >
 std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 
@@ -258,8 +237,9 @@ std::size_t rank(Indexing &&indexing, Dimensions &&dims, Partitions &&partitions
  * @see rank, num_orbits
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range EffectiveIndexing,
-		  std::ranges::random_access_range Dimensions, partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
-requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr void
+		  std::ranges::random_access_range Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
+requires index_scratch< EffectiveIndexing > constexpr void
 	unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
 		   EffectiveIndexing &&effective_idx, const Signs &signs = all_symmetric) {
 	using std::ranges::begin;
@@ -402,7 +382,7 @@ requires index_scratch< std::remove_cvref_t< EffectiveIndexing > > constexpr voi
  * @see rank
  */
 template< std::ranges::random_access_range Indexing, std::ranges::random_access_range Dimensions,
-		  partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
+		  partition_list Partitions, partition_signs Signs = all_symmetric_t >
 void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions &&partitions,
 			const Signs &signs = all_symmetric) {
 	using std::ranges::size;
@@ -432,7 +412,8 @@ void unrank(std::size_t rank, Indexing &&indexing, Dimensions &&dims, Partitions
  * @see rank
  */
 template< std::ranges::random_access_range Indexing = std::vector< std::size_t >,
-		  std::ranges::random_access_range Dimensions, partitions_spec Partitions, signs_spec Signs = all_symmetric_t >
+		  std::ranges::random_access_range Dimensions, partition_list Partitions,
+		  partition_signs Signs = all_symmetric_t >
 Indexing unrank(std::size_t rank, Dimensions &&dims, Partitions &&partitions, const Signs &signs = all_symmetric) {
 	using std::ranges::size;
 

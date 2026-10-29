@@ -10,6 +10,7 @@
  * instead include the individual headers (e.g. @c <tpack/rank.hpp>).
  */
 
+#include <tpack/concepts.hpp>
 #include <tpack/indexing.hpp>
 #include <tpack/labeled.hpp>
 #include <tpack/orbit.hpp>

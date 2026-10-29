@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <tpack/concepts.hpp>
 #include <tpack/details/levels.hpp>
 #include <tpack/details/symmetry.hpp>
 
@@ -69,7 +70,7 @@ template< typename Range > constexpr bool is_canonical_sequence(Range &&effectiv
  * rhs) that returns a positive / negative / zero value if column @c lhs is greater / smaller / equal to @c rhs.
  * @return @c true if all partitions are ordered canonically.
  */
-template< std::ranges::range Partitions, signs_spec Signs, typename CompareColumns >
+template< std::ranges::range Partitions, partition_signs Signs, typename CompareColumns >
 constexpr bool is_canonical_by(Partitions &&partitions, const Signs &signs, CompareColumns &&compare_columns) {
 	assert_signs_match(signs, partitions);
 
