@@ -11,6 +11,7 @@ the entire public API at once, or include the individual headers below.
 | `<tpack/indexing.hpp>` | `is_canonical`, `canonicalize` |
 | `<tpack/rank.hpp>` | `rank`, `unrank` |
 | `<tpack/partition.hpp>` | `sort_partitions`, `IndexOrder` |
+| `<tpack/partition_types.hpp>` | `Level`, `Partition`, `PartitionList` |
 | `<tpack/labeled.hpp>` | `Labeled` |
 | `<tpack/sector_layout.hpp>` | `SectorLayout`, `Constraint`, `xor_constraint` |
 
@@ -35,6 +36,20 @@ std::vector<std::vector<std::vector<std::size_t>>> partitions = {{{0, 1}}};
 A level with more than one entry describes a *joint* symmetry: for `partitions = {{{0, 1}, {2, 3}}}` the columns `(0, 2)` and `(1, 3)` are permuted
 together, i.e. swapping index 0 with 1 forces index 2 to swap with 3 — the symmetry of a pair of index pairs such as a two-electron integral
 `(ab|cd)`.
+
+### Readable partition types
+
+Nested `std::vector`s work but are hard to read. `<tpack/partition_types.hpp>` provides `Level`, `Partition` and `PartitionList`, which satisfy the
+same concepts and can be passed to every function in place of nested vectors. They are constructed from nested braces or built step by step, and
+offer named access (`levels()`, `partitions()`, `indices()`, `num_levels()`, `num_columns()`):
+
+```cpp
+tpack::PartitionList partitions = {{{0, 1}, {2, 3}}, {{4}}};
+
+tpack::PartitionList built;
+built.add_partition(tpack::Partition{}.add_level({0, 1}).add_level({2, 3}))
+     .add_partition(tpack::Partition{}.add_level({4}));
+```
 
 ### Preconditions
 
